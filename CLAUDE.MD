@@ -143,18 +143,6 @@ The script validates:
 - **uv**: Package manager (used for running scripts)
 - **PyYAML**: 6.0 or higher (automatically handled by uv inline script metadata)
 
-## Google Sheets Function Reference
-
-This project uses advanced Google Sheets functions:
-
-- **LET**: Define variables within formulas for better readability and performance
-- **LAMBDA**: Create custom reusable functions
-- **MAKEARRAY**: Generate arrays dynamically
-- **FILTER**: Filter data based on conditions
-- **INDEX**: Retrieve values from arrays
-- **MATCH**: Find position of values
-- And other standard spreadsheet functions
-
 ## Notes for Claude Code
 
 - Always validate YAML files after creation/modification using `uv run generate_readme.py`
