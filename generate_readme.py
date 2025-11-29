@@ -176,12 +176,12 @@ def generate_formula_list(formulas: List[Dict[str, Any]]) -> str:
         lines.append(f"<details>")
         lines.append(f"<summary><strong>{name}</strong></summary>\n")
 
+        lines.append(f"**Version**: `{version}`\n")
+
         lines.append(f"**Description**\n")
         lines.append(f"```")
         lines.append(description_clean)
         lines.append(f"```\n")
-
-        lines.append(f"**Version**: `{version}`\n")
 
         if parameters:
             lines.append(f"**Parameters**\n")
@@ -191,9 +191,16 @@ def generate_formula_list(formulas: List[Dict[str, Any]]) -> str:
                 param_desc_clean = ' '.join(param_desc.split())
                 param_example = param.get('example', '')
 
-                lines.append(f"- `{param_name}`: {param_desc_clean}")
+                lines.append(f"- `{param_name}`")
+                lines.append("")
+                lines.append(f"```")
+                lines.append(param_desc_clean)
+                lines.append(f"```\n")
                 if param_example:
-                    lines.append(f"  - Example: `{param_example}`")
+                    lines.append(f"Example:")
+                    lines.append(f"```")
+                    lines.append(f"{param_example}")
+                    lines.append(f"```\n")
             lines.append("")
 
         lines.append(f"**Formula**\n")

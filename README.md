@@ -16,27 +16,77 @@ A collection of named Excel/Google Sheets formulas using LET and LAMBDA function
 <details>
 <summary><strong>UNPIVOT</strong></summary>
 
+**Version**: `1.0.0`
+
 **Description**
 
 ```
 Transforms wide-format data into long-format (tidy data) by unpivoting specified columns into attribute-value pairs.
 ```
 
-**Version**: `1.0.0`
-
 **Parameters**
 
-- `data`: Input range including headers (first row must contain column names)
-  - Example: `A1:F100`
-- `fixedcols`: Number of leftmost columns to keep as identifiers (not unpivoted)
-  - Example: `2`
-- `attributecol`: Name for the column that will contain the unpivoted header names
-  - Example: `Quarter`
-- `valuecol`: Name for the column that will contain the unpivoted cell values
-  - Example: `Sales`
-- `select_columns`: Specifies which columns to unpivot. Can be array of strings (column names) or array of integers (1-based column indices). Empty string unpivots all non-fixed columns.
-  - Example: `{"Q1", "Q2", "Q3"}`
-- `fillna`: Value to replace empty cells with in the value column only. Default keeps blanks as-is. Different from filtering (use FILTER() wrapper to remove rows).
+- `data`
+
+```
+Input range including headers (first row must contain column names)
+```
+
+Example:
+```
+A1:F100
+```
+
+- `fixedcols`
+
+```
+Number of leftmost columns to keep as identifiers (not unpivoted)
+```
+
+Example:
+```
+2
+```
+
+- `attributecol`
+
+```
+Name for the column that will contain the unpivoted header names
+```
+
+Example:
+```
+Quarter
+```
+
+- `valuecol`
+
+```
+Name for the column that will contain the unpivoted cell values
+```
+
+Example:
+```
+Sales
+```
+
+- `select_columns`
+
+```
+Specifies which columns to unpivot. Can be array of strings (column names) or array of integers (1-based column indices). Empty string unpivots all non-fixed columns.
+```
+
+Example:
+```
+{"Q1", "Q2", "Q3"}
+```
+
+- `fillna`
+
+```
+Value to replace empty cells with in the value column only. Default keeps blanks as-is. Different from filtering (use FILTER() wrapper to remove rows).
+```
+
 
 **Formula**
 
