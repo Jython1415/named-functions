@@ -70,26 +70,32 @@ rows-any
       should_remove_cols, OR(dimension = "both", dimension = "cols"),
 
       rows_filtered, IF(should_remove_rows,
-        LET(
-          threshold, IF(has_any, COLUMNS(range), 1),
-          filtered, IF(has_strict,
-            IFERROR(FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((LEN(TRIM(r)) > 0) * 1) >= threshold))), {}),
-            IFERROR(FILTER(range, BYROW(range, LAMBDA(r, COUNTA(r) >= threshold))), {})
+        IFERROR(
+          LET(
+            threshold, IF(has_any, COLUMNS(range), 1),
+            IF(has_strict,
+              FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((LEN(TRIM(r)) > 0) * 1) >= threshold))),
+              FILTER(range, BYROW(range, LAMBDA(r, COUNTA(r) >= threshold)))
+            )
           ),
-          filtered
+          range
         ),
         range
       ),
 
       final, IF(should_remove_cols,
-        LET(
-          transposed, TRANSPOSE(rows_filtered),
-          threshold, IF(has_any, ROWS(rows_filtered), 1),
-          cols_filtered, IF(has_strict,
-            IFERROR(FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((LEN(TRIM(c)) > 0) * 1) >= threshold))), {}),
-            IFERROR(FILTER(transposed, BYROW(transposed, LAMBDA(c, COUNTA(c) >= threshold))), {})
+        IFERROR(
+          LET(
+            transposed, TRANSPOSE(rows_filtered),
+            threshold, IF(has_any, ROWS(rows_filtered), 1),
+            TRANSPOSE(
+              IF(has_strict,
+                FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((LEN(TRIM(c)) > 0) * 1) >= threshold))),
+                FILTER(transposed, BYROW(transposed, LAMBDA(c, COUNTA(c) >= threshold)))
+              )
+            )
           ),
-          TRANSPOSE(cols_filtered)
+          rows_filtered
         ),
         rows_filtered
       ),
