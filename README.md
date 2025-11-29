@@ -17,7 +17,11 @@ A collection of named Excel/Google Sheets formulas using LET and LAMBDA function
 <details>
 <summary><strong>DENSIFY</strong></summary>
 
-**Version**: `1.0.2`
+**Function Name**
+
+```
+DENSIFY
+```
 
 **Description**
 
@@ -27,30 +31,34 @@ Removes empty or incomplete rows and columns from sparse data. Use mode to contr
 
 **Parameters**
 
-range
+```
+1. range
+2. mode
+```
+
+**range**
 
 ```
 The data range to densify. Example - A1:Z100
 ```
 
-Example:
+**range Example**
 
 ```
 A1:Z100
 ```
 
-mode
+**mode**
 
 ```
 Controls dimension and strictness. Basic modes - both (default), rows, cols. Add -any to remove incomplete rows/cols. Add -strict to treat whitespace as empty. Combine both - rows-any-strict. Case-insensitive.
 ```
 
-Example:
+**mode Example**
 
 ```
 rows-any
 ```
-
 
 **Formula**
 
@@ -105,7 +113,11 @@ rows-any
 <details>
 <summary><strong>UNPIVOT</strong></summary>
 
-**Version**: `1.0.0`
+**Function Name**
+
+```
+UNPIVOT
+```
 
 **Description**
 
@@ -115,72 +127,80 @@ Transforms wide-format data into long-format (tidy data) by unpivoting specified
 
 **Parameters**
 
-data
+```
+1. data
+2. fixedcols
+3. attributecol
+4. valuecol
+5. select_columns
+6. fillna
+```
+
+**data**
 
 ```
 Input range including headers (first row must contain column names)
 ```
 
-Example:
+**data Example**
 
 ```
 A1:F100
 ```
 
-fixedcols
+**fixedcols**
 
 ```
 Number of leftmost columns to keep as identifiers (not unpivoted)
 ```
 
-Example:
+**fixedcols Example**
 
 ```
 2
 ```
 
-attributecol
+**attributecol**
 
 ```
 Name for the column that will contain the unpivoted header names
 ```
 
-Example:
+**attributecol Example**
 
 ```
 Quarter
 ```
 
-valuecol
+**valuecol**
 
 ```
 Name for the column that will contain the unpivoted cell values
 ```
 
-Example:
+**valuecol Example**
 
 ```
 Sales
 ```
 
-select_columns
+**select_columns**
 
 ```
 Specifies which columns to unpivot. Can be array of strings (column names) or array of integers (1-based column indices). Empty string unpivots all non-fixed columns.
 ```
 
-Example:
+**select_columns Example**
 
 ```
 {"Q1", "Q2", "Q3"}
 ```
 
-fillna
+**fillna**
 
 ```
 Value to replace empty cells with in the value column only. Default keeps blanks as-is. Different from filtering (use FILTER() wrapper to remove rows).
 ```
-
 
 **Formula**
 

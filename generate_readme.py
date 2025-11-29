@@ -176,7 +176,11 @@ def generate_formula_list(formulas: List[Dict[str, Any]]) -> str:
         lines.append(f"<details>")
         lines.append(f"<summary><strong>{name}</strong></summary>\n")
 
-        lines.append(f"**Version**: `{version}`\n")
+        # Function name
+        lines.append(f"**Function Name**\n")
+        lines.append(f"```")
+        lines.append(name)
+        lines.append(f"```\n")
 
         lines.append(f"**Description**\n")
         lines.append(f"```")
@@ -185,24 +189,30 @@ def generate_formula_list(formulas: List[Dict[str, Any]]) -> str:
 
         if parameters:
             lines.append(f"**Parameters**\n")
+
+            # List all parameter names first
+            lines.append(f"```")
+            for i, param in enumerate(parameters, 1):
+                lines.append(f"{i}. {param['name']}")
+            lines.append(f"```\n")
+
+            # Then detailed descriptions for each parameter
             for param in parameters:
                 param_name = param['name']
                 param_desc = param['description'].strip()
                 param_desc_clean = ' '.join(param_desc.split())
                 param_example = param.get('example', '')
 
-                lines.append(f"{param_name}")
-                lines.append("")
+                lines.append(f"**{param_name}**\n")
                 lines.append(f"```")
                 lines.append(param_desc_clean)
                 lines.append(f"```\n")
+
                 if param_example:
-                    lines.append(f"Example:")
-                    lines.append(f"")
+                    lines.append(f"**{param_name} Example**\n")
                     lines.append(f"```")
                     lines.append(f"{param_example}")
                     lines.append(f"```\n")
-            lines.append("")
 
         lines.append(f"**Formula**\n")
         lines.append(f"```")
