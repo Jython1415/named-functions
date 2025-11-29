@@ -309,7 +309,7 @@ Value to replace empty cells with in the value column only. Default keeps blanks
 ## Contributing
 
 To add a new formula:
-1. Create a new `.yaml` file in the root directory
+1. Create a new `.yaml` file in the `formulas` directory
 2. Follow the schema structure (see existing formulas for reference)
 3. Run `uv run generate_readme.py` to update the README
 4. The README will also be automatically updated via GitHub Actions on push to main

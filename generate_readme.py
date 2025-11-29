@@ -9,7 +9,7 @@
 Generate README.md from formula YAML files.
 
 This script:
-1. Reads all .yaml files in the root directory
+1. Reads all .yaml files in the formulas directory
 2. Validates them against the formula schema
 3. Generates README.md with a list of formulas
 """
@@ -90,7 +90,7 @@ def validate_formula_yaml(data: Dict[str, Any], filename: str) -> None:
 
 def load_and_validate_formulas(root_dir: Path) -> List[Dict[str, Any]]:
     """
-    Load all .yaml files from root directory and validate them.
+    Load all .yaml files from formulas directory and validate them.
 
     Args:
         root_dir: Path to the repository root
@@ -102,10 +102,11 @@ def load_and_validate_formulas(root_dir: Path) -> List[Dict[str, Any]]:
         ValidationError: If any file fails validation
     """
     formulas = []
-    yaml_files = sorted(root_dir.glob('*.yaml'))
+    formulas_dir = root_dir / 'formulas'
+    yaml_files = sorted(formulas_dir.glob('*.yaml'))
 
     if not yaml_files:
-        print("Warning: No .yaml files found in root directory")
+        print("Warning: No .yaml files found in formulas directory")
         return formulas
 
     for yaml_file in yaml_files:
