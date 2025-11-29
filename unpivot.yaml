@@ -128,11 +128,3 @@ formula: |
     
     VSTACK(output_headers, unpivoted)
   )
-
-notes: >
-  Uses MAKEARRAY with LAMBDA for coordinate transformation from output array
-  back to input range. Validates dimensions early for clear error messages.
-  The fillna parameter only affects the value column, not fixed or attribute
-  columns. For excluding rows, compose with FILTER() rather than using fillna.
-  Column selection supports both name-based ("Q1", "Q2") and index-based (3, 4)
-  approaches for flexibility in programmatic usage.

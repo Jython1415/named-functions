@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This repository contains a collection of named Excel/Google Sheets formulas using LET and LAMBDA functions. Formulas are defined in YAML files and the README is automatically generated from these definitions.
+This repository contains a collection of named Google Sheets formulas using LET and LAMBDA functions. Formulas are defined in YAML files and the README is automatically generated from these definitions.
 
 ## Project Structure
 
@@ -30,13 +30,9 @@ Each formula is defined in a `.yaml` file in the root directory with the followi
 - **parameters** (list): Array of parameter objects, each containing:
   - `name` (string): Parameter name
   - `description` (string): Parameter description
-  - `default` (optional): Default value
-  - `example` (optional): Example value
-- **formula** (string): The actual Excel/Google Sheets formula using LET and LAMBDA
-
-### Optional Fields
-
-- **notes** (string): Additional notes about implementation, caveats, or usage tips
+  - `default` (optional, no default value required): Default value if applicable
+  - `example` (optional, example value recommended): Example value if applicable
+- **formula** (string): The actual Google Sheets formula using LET and LAMBDA
 
 ### Example Structure
 
@@ -62,9 +58,6 @@ formula: |
     variable, expression,
     result
   )
-
-notes: >
-  Implementation notes and usage tips.
 ```
 
 ## Development Workflow
@@ -152,9 +145,9 @@ The script validates:
 - **uv**: Package manager (used for running scripts)
 - **PyYAML**: 6.0 or higher (automatically handled by uv inline script metadata)
 
-## Excel/Google Sheets Function Reference
+## Google Sheets Function Reference
 
-This project uses advanced Excel/Google Sheets functions:
+This project uses advanced Google Sheets functions:
 
 - **LET**: Define variables within formulas for better readability and performance
 - **LAMBDA**: Create custom reusable functions
@@ -163,11 +156,3 @@ This project uses advanced Excel/Google Sheets functions:
 - **INDEX**: Retrieve values from arrays
 - **MATCH**: Find position of values
 - And other standard spreadsheet functions
-
-## Notes for Claude Code
-
-- Always validate YAML files after creation/modification using `uv run generate_readme.py`
-- README.md is auto-generated - edit .readme-template.md for static content changes
-- The project uses `uv` instead of `pip` for dependency management
-- Formula YAML files should be well-documented with clear parameter descriptions and examples
-- Version numbers should follow semantic versioning principles
