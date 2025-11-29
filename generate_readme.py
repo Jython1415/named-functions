@@ -136,29 +136,89 @@ def load_and_validate_formulas(root_dir: Path) -> List[Dict[str, Any]]:
 
 def generate_formula_list(formulas: List[Dict[str, Any]]) -> str:
     """
-    Generate markdown list of formulas.
+    Generate markdown with formula summary list and detailed expandable sections.
 
     Args:
         formulas: List of validated formula dictionaries
 
     Returns:
-        Markdown string with formula list
+        Markdown string with formula list and detailed sections
     """
     if not formulas:
         return "_No formulas available yet._\n"
 
-    lines = []
-    for formula in sorted(formulas, key=lambda f: f['name'].lower()):
+    sorted_formulas = sorted(formulas, key=lambda f: f['name'].lower())
+
+    # Generate summary list
+    lines = ["### Quick Reference\n"]
+    for formula in sorted_formulas:
         name = formula['name']
         filename = formula['filename']
         description = formula['description'].strip()
-
-        # Make description single line if it's multiline
         description_clean = ' '.join(description.split())
-
         lines.append(f"- **[{name}]({filename})** - {description_clean}")
 
-    return '\n'.join(lines) + '\n'
+    lines.append("")  # blank line
+    lines.append("### Detailed Formulas\n")
+
+    # Generate detailed sections with copy-pastable content
+    for formula in sorted_formulas:
+        name = formula['name']
+        filename = formula['filename']
+        description = formula['description'].strip()
+        description_clean = ' '.join(description.split())
+        version = formula['version']
+        parameters = formula.get('parameters', [])
+        formula_text = formula['formula'].strip()
+        notes = formula.get('notes', '')
+
+        # Create expandable section
+        lines.append(f"<details>")
+        lines.append(f"<summary><strong>{name}</strong></summary>\n")
+
+        lines.append(f"**Version**: `{version}`\n")
+
+        lines.append(f"**Description**\n")
+        lines.append(f"```")
+        lines.append(description_clean)
+        lines.append(f"```\n")
+
+        if parameters:
+            lines.append(f"**Parameters**\n")
+            for param in parameters:
+                param_name = param['name']
+                param_desc = param['description'].strip()
+                param_desc_clean = ' '.join(param_desc.split())
+                param_example = param.get('example', '')
+
+                lines.append(f"{param_name}")
+                lines.append("")
+                lines.append(f"```")
+                lines.append(param_desc_clean)
+                lines.append(f"```\n")
+                if param_example:
+                    lines.append(f"Example:")
+                    lines.append(f"")
+                    lines.append(f"```")
+                    lines.append(f"{param_example}")
+                    lines.append(f"```\n")
+            lines.append("")
+
+        lines.append(f"**Formula**\n")
+        lines.append(f"```")
+        lines.append(formula_text)
+        lines.append(f"```\n")
+
+        if notes:
+            notes_clean = ' '.join(notes.strip().split())
+            lines.append(f"**Notes**\n")
+            lines.append(f"```")
+            lines.append(notes_clean)
+            lines.append(f"```\n")
+
+        lines.append(f"</details>\n")
+
+    return '\n'.join(lines)
 
 
 def generate_readme(template_path: Path, formulas: List[Dict[str, Any]]) -> str:
