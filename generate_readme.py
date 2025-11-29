@@ -201,7 +201,6 @@ def generate_formula_list(formulas: List[Dict[str, Any]]) -> str:
 
         # 5. Argument description and examples
         if parameters:
-            lines.append(f"**Parameter Details**\n\n")
             for param in parameters:
                 param_name = param['name']
                 param_desc = param['description'].strip()
@@ -210,6 +209,7 @@ def generate_formula_list(formulas: List[Dict[str, Any]]) -> str:
 
                 # Use heading level 4 for parameter names for stronger visual hierarchy
                 lines.append(f"#### {param_name}\n")
+                lines.append(f"**Description:**\n")
                 lines.append(f"```")
                 lines.append(param_desc_clean)
                 lines.append(f"```\n")

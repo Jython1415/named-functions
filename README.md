@@ -80,10 +80,9 @@ Removes empty or incomplete rows and columns from sparse data. Use mode to contr
 )
 ```
 
-**Parameter Details**
-
-
 #### range
+
+**Description:**
 
 ```
 The data range to densify. Example - A1:Z100
@@ -96,6 +95,8 @@ A1:Z100
 ```
 
 #### mode
+
+**Description:**
 
 ```
 Controls dimension and strictness. Basic modes - both (default), rows, cols. Add -any to remove incomplete rows/cols. Add -strict to treat whitespace as empty. Combine both - rows-any-strict. Case-insensitive.
@@ -223,10 +224,9 @@ LET(
 )
 ```
 
-**Parameter Details**
-
-
 #### data
+
+**Description:**
 
 ```
 Input range including headers (first row must contain column names)
@@ -240,6 +240,8 @@ A1:F100
 
 #### fixedcols
 
+**Description:**
+
 ```
 Number of leftmost columns to keep as identifiers (not unpivoted)
 ```
@@ -251,6 +253,8 @@ Number of leftmost columns to keep as identifiers (not unpivoted)
 ```
 
 #### attributecol
+
+**Description:**
 
 ```
 Name for the column that will contain the unpivoted header names
@@ -264,6 +268,8 @@ Quarter
 
 #### valuecol
 
+**Description:**
+
 ```
 Name for the column that will contain the unpivoted cell values
 ```
@@ -276,6 +282,8 @@ Sales
 
 #### select_columns
 
+**Description:**
+
 ```
 Specifies which columns to unpivot. Can be array of strings (column names) or array of integers (1-based column indices). Empty string unpivots all non-fixed columns.
 ```
@@ -287,6 +295,8 @@ Specifies which columns to unpivot. Can be array of strings (column names) or ar
 ```
 
 #### fillna
+
+**Description:**
 
 ```
 Value to replace empty cells with in the value column only. Default keeps blanks as-is. Different from filtering (use FILTER() wrapper to remove rows).
