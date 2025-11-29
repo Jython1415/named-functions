@@ -16,7 +16,8 @@ A collection of named Excel/Google Sheets formulas using LET and LAMBDA function
 To add a new formula:
 1. Create a new `.yaml` file in the root directory
 2. Follow the schema structure (see existing formulas for reference)
-3. The README will be automatically updated via GitHub Actions
+3. Run `uv run generate_readme.py` to update the README
+4. The README will also be automatically updated via GitHub Actions on push to main
 
 ## License
 
