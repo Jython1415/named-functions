@@ -12,17 +12,14 @@ parameters:
 
   - name: fixedcols
     description: Number of leftmost columns to keep as identifiers (not unpivoted)
-    default: 1
     example: 2
 
   - name: attributecol
     description: Name for the column that will contain the unpivoted header names
-    default: "Attribute"
     example: "Quarter"
 
   - name: valuecol
     description: Name for the column that will contain the unpivoted cell values
-    default: "Value"
     example: "Sales"
 
   - name: select_columns
@@ -30,14 +27,12 @@ parameters:
       Specifies which columns to unpivot. Can be array of strings (column names)
       or array of integers (1-based column indices). Empty string unpivots all
       non-fixed columns.
-    default: ""
     example: '{"Q1", "Q2", "Q3"}'
 
   - name: fillna
     description: >
       Value to replace empty cells with in the value column only. Default keeps
       blanks as-is. Different from filtering (use FILTER() wrapper to remove rows).
-    default: ""
     example: 0
 
 formula: |

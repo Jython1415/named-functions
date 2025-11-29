@@ -30,7 +30,6 @@ Each formula is defined in a `.yaml` file in the root directory with the followi
 - **parameters** (list): Array of parameter objects, each containing:
   - `name` (string): Parameter name
   - `description` (string): Parameter description
-  - `default` (optional, no default value required): Default value if applicable
   - `example` (optional, example value recommended): Example value if applicable
 - **formula** (string): The actual Google Sheets formula using LET and LAMBDA
 
@@ -50,7 +49,6 @@ parameters:
 
   - name: param2
     description: Description of second parameter
-    default: 1
     example: 2
 
 formula: |
@@ -156,3 +154,11 @@ This project uses advanced Google Sheets functions:
 - **INDEX**: Retrieve values from arrays
 - **MATCH**: Find position of values
 - And other standard spreadsheet functions
+
+## Notes for Claude Code
+
+- Always validate YAML files after creation/modification using `uv run generate_readme.py`
+- README.md is auto-generated - edit .readme-template.md for static content changes
+- The project uses `uv` instead of `pip` for dependency management
+- Formula YAML files should be well-documented with clear parameter descriptions and examples
+- Version numbers should follow semantic versioning principles
