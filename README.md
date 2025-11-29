@@ -9,9 +9,98 @@ A collection of named Excel/Google Sheets formulas using LET and LAMBDA function
 
 ### Quick Reference
 
+- **[DENSIFY](densify.yaml)** - Removes empty or incomplete rows and columns from sparse data. Use mode to control which dimensions to process and how strict to be. Supports data validation (remove incomplete records) and whitespace handling (treat spaces as empty).
 - **[UNPIVOT](unpivot.yaml)** - Transforms wide-format data into long-format (tidy data) by unpivoting specified columns into attribute-value pairs.
 
 ### Detailed Formulas
+
+<details>
+<summary><strong>DENSIFY</strong></summary>
+
+**Version**: `1.0.0`
+
+**Description**
+
+```
+Removes empty or incomplete rows and columns from sparse data. Use mode to control which dimensions to process and how strict to be. Supports data validation (remove incomplete records) and whitespace handling (treat spaces as empty).
+```
+
+**Parameters**
+
+range
+
+```
+The data range to densify. Example - A1:Z100
+```
+
+Example:
+
+```
+A1:Z100
+```
+
+mode
+
+```
+Controls dimension and strictness. Basic modes - both (default), rows, cols. Add -any to remove incomplete rows/cols. Add -strict to treat whitespace as empty. Combine both - rows-any-strict. Case-insensitive.
+```
+
+Example:
+
+```
+rows-any
+```
+
+
+**Formula**
+
+```
+=LET(
+  actual_mode, IF(OR(mode="", mode=0), "both", LOWER(TRIM(mode))),
+  mode_parts, SPLIT(actual_mode, "-"),
+  dimension, INDEX(mode_parts, 1),
+  has_any, IFERROR(FIND("any", actual_mode) > 0, FALSE),
+  has_strict, IFERROR(FIND("strict", actual_mode) > 0, FALSE),
+  valid_dimension, OR(dimension = "both", dimension = "rows", dimension = "cols"),
+
+  IF(NOT(valid_dimension),
+    NA(),
+    LET(
+      should_remove_rows, OR(dimension = "both", dimension = "rows"),
+      should_remove_cols, OR(dimension = "both", dimension = "cols"),
+
+      rows_filtered, IF(should_remove_rows,
+        LET(
+          threshold, IF(has_any, COLUMNS(range), 1),
+          filtered, IF(has_strict,
+            FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((LEN(TRIM(r)) > 0) * 1) >= threshold))),
+            FILTER(range, BYROW(range, LAMBDA(r, COUNTA(r) >= threshold)))
+          ),
+          filtered
+        ),
+        range
+      ),
+
+      final, IF(should_remove_cols,
+        LET(
+          transposed, TRANSPOSE(rows_filtered),
+          threshold, IF(has_any, ROWS(rows_filtered), 1),
+          cols_filtered, IF(has_strict,
+            FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((LEN(TRIM(c)) > 0) * 1) >= threshold))),
+            FILTER(transposed, BYROW(transposed, LAMBDA(c, COUNTA(c) >= threshold)))
+          ),
+          TRANSPOSE(cols_filtered)
+        ),
+        rows_filtered
+      ),
+
+      final
+    )
+  )
+)
+```
+
+</details>
 
 <details>
 <summary><strong>UNPIVOT</strong></summary>
