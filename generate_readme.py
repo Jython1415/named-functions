@@ -191,13 +191,14 @@ def generate_formula_list(formulas: List[Dict[str, Any]]) -> str:
                 param_desc_clean = ' '.join(param_desc.split())
                 param_example = param.get('example', '')
 
-                lines.append(f"- `{param_name}`")
+                lines.append(f"{param_name}")
                 lines.append("")
                 lines.append(f"```")
                 lines.append(param_desc_clean)
                 lines.append(f"```\n")
                 if param_example:
                     lines.append(f"Example:")
+                    lines.append(f"")
                     lines.append(f"```")
                     lines.append(f"{param_example}")
                     lines.append(f"```\n")
