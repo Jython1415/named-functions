@@ -10,6 +10,7 @@ A collection of named Excel/Google Sheets formulas using LET and LAMBDA function
 ### Quick Reference
 
 - **[DENSIFY](#densify)** - Removes empty or incomplete rows and columns from sparse data. Use mode to control which dimensions to process and how strict to be. Supports data validation (remove incomplete records) and whitespace handling (treat spaces as empty).
+- **[GROUPBY](#groupby)** - Groups data by one or more columns and applies custom aggregation logic via LAMBDA functions, implementing SQL-like GROUP BY functionality. Does not handle headers - provide data without header row.
 - **[UNPIVOT](#unpivot)** - Transforms wide-format data into long-format (tidy data) by unpivoting specified columns into attribute-value pairs.
 
 ### Detailed Formulas
@@ -106,6 +107,156 @@ Controls dimension and strictness. Basic modes - both (default), rows, cols. Add
 
 ```
 rows-any
+```
+
+</details>
+
+<details>
+<summary><strong>GROUPBY</strong></summary>
+
+### GROUPBY
+
+**Description**
+
+```
+Groups data by one or more columns and applies custom aggregation logic via LAMBDA functions, implementing SQL-like GROUP BY functionality. Does not handle headers - provide data without header row.
+```
+
+**Parameters**
+
+```
+1. data
+2. group_cols
+3. value_cols
+4. agg_lambda
+```
+
+**Formula**
+
+```
+LET(
+  num_rows, ROWS(data),
+  num_cols, COLUMNS(data),
+
+  _validate_dims, IF(OR(num_rows < 1, num_cols < 1),
+    ERROR("Data must have at least 1 row and 1 column"),
+    TRUE
+  ),
+
+  group_cols_array, IF(ROWS(group_cols) = 1,
+    IF(COLUMNS(group_cols) = 1, {group_cols}, group_cols),
+    TRANSPOSE(group_cols)
+  ),
+
+  value_cols_array, IF(ROWS(value_cols) = 1,
+    IF(COLUMNS(value_cols) = 1, {value_cols}, value_cols),
+    TRANSPOSE(value_cols)
+  ),
+
+  _validate_group_cols, IF(
+    OR(
+      SUMPRODUCT(--(group_cols_array < 1)) > 0,
+      SUMPRODUCT(--(group_cols_array > num_cols)) > 0
+    ),
+    ERROR("Group column indices must be between 1 and " & num_cols),
+    TRUE
+  ),
+
+  _validate_value_cols, IF(
+    OR(
+      SUMPRODUCT(--(value_cols_array < 1)) > 0,
+      SUMPRODUCT(--(value_cols_array > num_cols)) > 0
+    ),
+    ERROR("Value column indices must be between 1 and " & num_cols),
+    TRUE
+  ),
+
+  group_data, MAKEARRAY(num_rows, COLUMNS(group_cols_array), LAMBDA(r, c,
+    INDEX(data, r, INDEX(group_cols_array, 1, c))
+  )),
+
+  unique_groups, UNIQUE(group_data),
+  num_groups, ROWS(unique_groups),
+
+  aggregated, BYROW(unique_groups, LAMBDA(group_row,
+    LET(
+      matches, BYROW(group_data, LAMBDA(data_row,
+        IF(
+          SUMPRODUCT(--(data_row = group_row)) = COLUMNS(group_row),
+          TRUE,
+          FALSE
+        )
+      )),
+
+      filtered_values, FILTER(
+        MAKEARRAY(num_rows, COLUMNS(value_cols_array), LAMBDA(r, c,
+          INDEX(data, r, INDEX(value_cols_array, 1, c))
+        )),
+        matches
+      ),
+
+      agg_lambda(filtered_values)
+    )
+  )),
+
+  HSTACK(unique_groups, aggregated)
+)
+```
+
+#### data
+
+**Description:**
+
+```
+Input dataset without headers (2D array of values to group and aggregate)
+```
+
+**Example:**
+
+```
+A2:D100
+```
+
+#### group_cols
+
+**Description:**
+
+```
+Column indices to group by (1-based). Single integer or array of integers.
+```
+
+**Example:**
+
+```
+{1, 2}
+```
+
+#### value_cols
+
+**Description:**
+
+```
+Column indices to aggregate (1-based). Single integer or array of integers.
+```
+
+**Example:**
+
+```
+3
+```
+
+#### agg_lambda
+
+**Description:**
+
+```
+LAMBDA function that receives filtered values and returns aggregation result(s). Input is 2D array (N rows × M columns) for one group. Output should be 1×K array where K = number of aggregation results.
+```
+
+**Example:**
+
+```
+LAMBDA(v, SUM(v))
 ```
 
 </details>
