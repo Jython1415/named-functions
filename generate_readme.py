@@ -157,7 +157,7 @@ def generate_formula_list(formulas: List[Dict[str, Any]]) -> str:
         filename = formula['filename']
         description = formula['description'].strip()
         description_clean = ' '.join(description.split())
-        lines.append(f"- **[{name}]({filename})** - {description_clean}")
+        lines.append(f"- **[{name}](formulas/{filename})** - {description_clean}")
 
     lines.append("")  # blank line
     lines.append("### Detailed Formulas\n")

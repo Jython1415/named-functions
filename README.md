@@ -9,8 +9,8 @@ A collection of named Excel/Google Sheets formulas using LET and LAMBDA function
 
 ### Quick Reference
 
-- **[DENSIFY](densify.yaml)** - Removes empty or incomplete rows and columns from sparse data. Use mode to control which dimensions to process and how strict to be. Supports data validation (remove incomplete records) and whitespace handling (treat spaces as empty).
-- **[UNPIVOT](unpivot.yaml)** - Transforms wide-format data into long-format (tidy data) by unpivoting specified columns into attribute-value pairs.
+- **[DENSIFY](formulas/densify.yaml)** - Removes empty or incomplete rows and columns from sparse data. Use mode to control which dimensions to process and how strict to be. Supports data validation (remove incomplete records) and whitespace handling (treat spaces as empty).
+- **[UNPIVOT](formulas/unpivot.yaml)** - Transforms wide-format data into long-format (tidy data) by unpivoting specified columns into attribute-value pairs.
 
 ### Detailed Formulas
 
