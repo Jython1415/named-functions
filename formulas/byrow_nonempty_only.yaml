@@ -1,0 +1,29 @@
+name: BYROW_NONEMPTY_ONLY
+version: 1.0.0
+
+description: >
+  Applies a row operation only to non-empty rows (rows with at least one non-blank cell). Completely empty rows return a specified fallback value. Useful for filtering out empty rows during processing.
+
+parameters:
+  - name: input_range
+    description: Range of data to process row by row
+    example: "A1:D10"
+
+  - name: value_if_empty
+    description: Value to return for rows that are completely empty (all cells blank)
+    example: '""'
+
+  - name: row_operation
+    description: LAMBDA function to apply to each non-empty row. Receives a single row as input.
+    example: "LAMBDA(row, TEXTJOIN(\", \", TRUE, row))"
+
+formula: |
+  BYROW(input_range,
+    LAMBDA(row,
+      IF(
+        COUNTBLANK(row) = COLUMNS(row),
+        value_if_empty,
+        row_operation(row)
+      )
+    )
+  )

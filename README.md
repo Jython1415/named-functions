@@ -9,11 +9,167 @@ A collection of named Excel/Google Sheets formulas using LET and LAMBDA function
 
 ### Quick Reference
 
+- **[BYROW_COMPLETE_ONLY](#byrow_complete_only)** - Applies a row operation only to complete rows (rows with no blank cells). Incomplete rows return a specified fallback value. Useful for processing data while gracefully handling missing values.
+- **[BYROW_NONEMPTY_ONLY](#byrow_nonempty_only)** - Applies a row operation only to non-empty rows (rows with at least one non-blank cell). Completely empty rows return a specified fallback value. Useful for filtering out empty rows during processing.
 - **[DENSIFY](#densify)** - Removes empty or incomplete rows and columns from sparse data. Use mode to control which dimensions to process and how strict to be. Supports data validation (remove incomplete records) and whitespace handling (treat spaces as empty).
 - **[GROUPBY](#groupby)** - Groups data by one or more columns and applies custom aggregation logic via LAMBDA functions, implementing SQL-like GROUP BY functionality. Does not handle headers - provide data without header row.
 - **[UNPIVOT](#unpivot)** - Transforms wide-format data into long-format (tidy data) by unpivoting specified columns into attribute-value pairs.
 
 ### Detailed Formulas
+
+<details>
+<summary><strong>BYROW_COMPLETE_ONLY</strong></summary>
+
+### BYROW_COMPLETE_ONLY
+
+**Description**
+
+```
+Applies a row operation only to complete rows (rows with no blank cells). Incomplete rows return a specified fallback value. Useful for processing data while gracefully handling missing values.
+```
+
+**Parameters**
+
+```
+1. input_range
+2. value_if_incomplete
+3. row_operation
+```
+
+**Formula**
+
+```
+BYROW(input_range,
+  LAMBDA(row,
+    IF(
+      COUNTBLANK(row) > 0,
+      value_if_incomplete,
+      row_operation(row)
+    )
+  )
+)
+```
+
+#### input_range
+
+**Description:**
+
+```
+Range of data to process row by row
+```
+
+**Example:**
+
+```
+A1:D10
+```
+
+#### value_if_incomplete
+
+**Description:**
+
+```
+Value to return for rows that contain any blank cells
+```
+
+**Example:**
+
+```
+""
+```
+
+#### row_operation
+
+**Description:**
+
+```
+LAMBDA function to apply to each complete row. Receives a single row as input.
+```
+
+**Example:**
+
+```
+LAMBDA(row, SUM(row))
+```
+
+</details>
+
+<details>
+<summary><strong>BYROW_NONEMPTY_ONLY</strong></summary>
+
+### BYROW_NONEMPTY_ONLY
+
+**Description**
+
+```
+Applies a row operation only to non-empty rows (rows with at least one non-blank cell). Completely empty rows return a specified fallback value. Useful for filtering out empty rows during processing.
+```
+
+**Parameters**
+
+```
+1. input_range
+2. value_if_empty
+3. row_operation
+```
+
+**Formula**
+
+```
+BYROW(input_range,
+  LAMBDA(row,
+    IF(
+      COUNTBLANK(row) = COLUMNS(row),
+      value_if_empty,
+      row_operation(row)
+    )
+  )
+)
+```
+
+#### input_range
+
+**Description:**
+
+```
+Range of data to process row by row
+```
+
+**Example:**
+
+```
+A1:D10
+```
+
+#### value_if_empty
+
+**Description:**
+
+```
+Value to return for rows that are completely empty (all cells blank)
+```
+
+**Example:**
+
+```
+""
+```
+
+#### row_operation
+
+**Description:**
+
+```
+LAMBDA function to apply to each non-empty row. Receives a single row as input.
+```
+
+**Example:**
+
+```
+LAMBDA(row, TEXTJOIN(", ", TRUE, row))
+```
+
+</details>
 
 <details>
 <summary><strong>DENSIFY</strong></summary>
