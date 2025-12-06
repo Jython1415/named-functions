@@ -1,0 +1,29 @@
+name: BYROW_COMPLETE_ONLY
+version: 1.0.0
+
+description: >
+  Applies a row operation only to complete rows (rows with no blank cells). Incomplete rows return a specified fallback value. Useful for processing data while gracefully handling missing values.
+
+parameters:
+  - name: input_range
+    description: Range of data to process row by row
+    example: "A1:D10"
+
+  - name: value_if_incomplete
+    description: Value to return for rows that contain any blank cells
+    example: '""'
+
+  - name: row_operation
+    description: LAMBDA function to apply to each complete row. Receives a single row as input.
+    example: "LAMBDA(row, SUM(row))"
+
+formula: |
+  BYROW(input_range,
+    LAMBDA(row,
+      IF(
+        COUNTBLANK(row) > 0,
+        value_if_incomplete,
+        row_operation(row)
+      )
+    )
+  )
