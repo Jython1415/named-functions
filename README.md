@@ -12,6 +12,7 @@ A collection of named Excel/Google Sheets formulas using LET and LAMBDA function
 - **[BYROW_COMPLETE_ONLY](#byrow_complete_only)** - Applies a row operation only to complete rows (rows with no blank cells). Incomplete rows return a specified fallback value. Useful for processing data while gracefully handling missing values.
 - **[BYROW_NONEMPTY_ONLY](#byrow_nonempty_only)** - Applies a row operation only to non-empty rows (rows with at least one non-blank cell). Completely empty rows return a specified fallback value. Useful for filtering out empty rows during processing.
 - **[DENSIFY](#densify)** - Removes empty or incomplete rows and columns from sparse data. Use mode to control which dimensions to process and how strict to be. Supports data validation (remove incomplete records) and whitespace handling (treat spaces as empty).
+- **[DENSIFYROWS](#densifyrows)** - Removes rows that have at least one blank cell from sparse data. This is a convenience wrapper around DENSIFY that specifically targets row operations with the "rows-any" mode.
 - **[GROUPBY](#groupby)** - Groups data by one or more columns and applies custom aggregation logic via LAMBDA functions, implementing SQL-like GROUP BY functionality. Does not handle headers - provide data without header row.
 - **[UNPIVOT](#unpivot)** - Transforms wide-format data into long-format (tidy data) by unpivoting specified columns into attribute-value pairs.
 
@@ -263,6 +264,87 @@ Controls dimension and strictness. Basic modes - both (default), rows, cols. Add
 
 ```
 rows-any
+```
+
+</details>
+
+<details>
+<summary><strong>DENSIFYROWS</strong></summary>
+
+### DENSIFYROWS
+
+**Description**
+
+```
+Removes rows that have at least one blank cell from sparse data. This is a convenience wrapper around DENSIFY that specifically targets row operations with the "rows-any" mode.
+```
+
+**Parameters**
+
+```
+1. range
+```
+
+**Formula**
+
+```
+=LET(
+  actual_mode, IF(OR("rows-any"="", "rows-any"=0), "both", LOWER(TRIM("rows-any"))),
+  mode_parts, SPLIT(actual_mode, "-"),
+  dimension, INDEX(mode_parts, 1),
+  has_any, IFERROR(FIND("any", actual_mode) > 0, FALSE),
+  has_strict, IFERROR(FIND("strict", actual_mode) > 0, FALSE),
+  valid_dimension, OR(dimension = "both", dimension = "rows", dimension = "cols"),
+
+  IF(NOT(valid_dimension),
+    NA(),
+    LET(
+      should_remove_rows, OR(dimension = "both", dimension = "rows"),
+      should_remove_cols, OR(dimension = "both", dimension = "cols"),
+
+      rows_filtered, IF(should_remove_rows,
+        LET(
+          threshold, IF(has_any, COLUMNS(range), 1),
+          IF(has_strict,
+            IFNA(FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((LEN(TRIM(r)) > 0) * 1) >= threshold))), ""),
+            IFNA(FILTER(range, BYROW(range, LAMBDA(r, COUNTA(r) >= threshold))), "")
+          )
+        ),
+        range
+      ),
+
+      final, IF(should_remove_cols,
+        LET(
+          transposed, TRANSPOSE(rows_filtered),
+          threshold, IF(has_any, ROWS(rows_filtered), 1),
+          TRANSPOSE(
+            IF(has_strict,
+              IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((LEN(TRIM(c)) > 0) * 1) >= threshold))), ""),
+              IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, COUNTA(c) >= threshold))), "")
+            )
+          )
+        ),
+        rows_filtered
+      ),
+
+      final
+    )
+  )
+)
+```
+
+#### range
+
+**Description:**
+
+```
+The data range to densify (remove incomplete rows)
+```
+
+**Example:**
+
+```
+A1:Z100
 ```
 
 </details>

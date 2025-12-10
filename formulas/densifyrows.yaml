@@ -1,0 +1,14 @@
+name: DENSIFYROWS
+version: 1.0.0
+
+description: >
+  Removes rows that have at least one blank cell from sparse data. This is a convenience
+  wrapper around DENSIFY that specifically targets row operations with the "rows-any" mode.
+
+parameters:
+  - name: range
+    description: The data range to densify (remove incomplete rows)
+    example: "A1:Z100"
+
+formula: |
+  DENSIFY(range, "rows-any")
