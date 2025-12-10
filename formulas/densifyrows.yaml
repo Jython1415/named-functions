@@ -2,8 +2,8 @@ name: DENSIFYROWS
 version: 1.0.0
 
 description: >
-  Removes empty or incomplete rows from sparse data. This is a convenience wrapper
-  around DENSIFY that specifically targets row operations.
+  Removes rows that have at least one blank cell from sparse data. This is a convenience
+  wrapper around DENSIFY that specifically targets row operations with the "rows-any" mode.
 
 parameters:
   - name: range

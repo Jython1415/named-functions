@@ -458,6 +458,23 @@ def expand_formula(
         # Wrap in parentheses to preserve structure
         result = result.replace(call_text, f"({substituted})")
 
+    # If the original formula had = prefix, preserve it
+    # Remove extra parentheses if the entire formula is just one substitution
+    if result.startswith('(') and result.endswith(')') and result.count('(') == result.count(')'):
+        # Check if it's just wrapped - try to unwrap
+        inner = result[1:-1]
+        # Simple heuristic: if no calls were made or if this was a complete replacement
+        if formula_text == call_text:
+            result = inner
+
+    # Ensure = prefix for expanded formulas that need it
+    # If the result starts with a formula function (LET, LAMBDA, etc.) and doesn't have =, add it
+    if not result.startswith('='):
+        # Check if it starts with a common formula function
+        formula_starters = ['LET(', 'LAMBDA(', 'BYROW(', 'BYCOL(', 'MAKEARRAY(', 'FILTER(', 'DENSIFY(']
+        if any(result.startswith(starter) for starter in formula_starters):
+            result = '=' + result
+
     expanded_cache[name] = result
     return result
 
