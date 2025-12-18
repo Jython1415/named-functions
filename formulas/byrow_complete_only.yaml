@@ -1,5 +1,5 @@
 name: BYROW_COMPLETE_ONLY
-version: 1.0.0
+version: 1.0.1
 
 description: >
   Applies a row operation only to complete rows (rows with no blank cells). Incomplete rows return a specified fallback value. Useful for processing data while gracefully handling missing values.
@@ -11,7 +11,7 @@ parameters:
 
   - name: value_if_incomplete
     description: Value to return for rows that contain any blank cells
-    example: '""'
+    example: 'BLANK()'
 
   - name: row_operation
     description: LAMBDA function to apply to each complete row. Receives a single row as input.
