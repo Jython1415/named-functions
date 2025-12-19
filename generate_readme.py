@@ -604,10 +604,10 @@ def generate_formula_list(formulas: List[Dict[str, Any]]) -> str:
         # 1. Function name
         lines.append(f"### {name}\n")
 
-        # 2. Description
+        # 2. Description with version
         lines.append(f"**Description**\n")
         lines.append(f"```")
-        lines.append(description_clean)
+        lines.append(f"v{version} {description_clean}")
         lines.append(f"```\n")
 
         # 3. Argument placeholders (parameter names only)

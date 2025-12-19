@@ -28,7 +28,7 @@ A collection of named Excel/Google Sheets formulas using LET and LAMBDA function
 **Description**
 
 ```
-Returns a truly blank cell value. This is useful in LAMBDA functions and MAP operations where you want to return blank cells rather than empty strings or other values. Equivalent to using the omitted argument syntax in IF (e.g., IF(condition, , value)), but more semantically clear and readable.
+v1.0.1 Returns a truly blank cell value. This is useful in LAMBDA functions and MAP operations where you want to return blank cells rather than empty strings or other values. Equivalent to using the omitted argument syntax in IF (e.g., IF(condition, , value)), but more semantically clear and readable.
 ```
 
 **Formula**
@@ -47,7 +47,7 @@ LAMBDA(input, IF(,,))(0)
 **Description**
 
 ```
-Applies a row operation only to complete rows (rows with no blank cells). Incomplete rows return a specified fallback value. Useful for processing data while gracefully handling missing values.
+v1.0.1 Applies a row operation only to complete rows (rows with no blank cells). Incomplete rows return a specified fallback value. Useful for processing data while gracefully handling missing values.
 ```
 
 **Parameters**
@@ -124,7 +124,7 @@ LAMBDA(row, SUM(row))
 **Description**
 
 ```
-Applies a row operation only to non-empty rows (rows with at least one non-blank cell). Completely empty rows return a specified fallback value. Useful for filtering out empty rows during processing.
+v1.0.1 Applies a row operation only to non-empty rows (rows with at least one non-blank cell). Completely empty rows return a specified fallback value. Useful for filtering out empty rows during processing.
 ```
 
 **Parameters**
@@ -201,7 +201,7 @@ LAMBDA(row, TEXTJOIN(", ", TRUE, row))
 **Description**
 
 ```
-Removes empty or incomplete rows and columns from sparse data. Use mode to control which dimensions to process and how strict to be. Supports data validation (remove incomplete records) and whitespace handling (treat spaces as empty).
+v1.0.3 Removes empty or incomplete rows and columns from sparse data. Use mode to control which dimensions to process and how strict to be. Supports data validation (remove incomplete records) and whitespace handling (treat spaces as empty).
 ```
 
 **Parameters**
@@ -297,7 +297,7 @@ rows-any
 **Description**
 
 ```
-Removes rows that have at least one blank cell from sparse data. This is a convenience wrapper around DENSIFY that specifically targets row operations with the "rows-any" mode.
+v1.0.0 Removes rows that have at least one blank cell from sparse data. This is a convenience wrapper around DENSIFY that specifically targets row operations with the "rows-any" mode.
 ```
 
 **Parameters**
@@ -378,7 +378,7 @@ A1:Z100
 **Description**
 
 ```
-Groups data by one or more columns and applies custom aggregation logic via LAMBDA functions, implementing SQL-like GROUP BY functionality. Does not handle headers - provide data without header row.
+v1.0.0 Groups data by one or more columns and applies custom aggregation logic via LAMBDA functions, implementing SQL-like GROUP BY functionality. Does not handle headers - provide data without header row.
 ```
 
 **Parameters**
@@ -528,7 +528,7 @@ LAMBDA(v, SUM(v))
 **Description**
 
 ```
-Transforms wide-format data into long-format (tidy data) by unpivoting specified columns into attribute-value pairs.
+v1.0.0 Transforms wide-format data into long-format (tidy data) by unpivoting specified columns into attribute-value pairs.
 ```
 
 **Parameters**
@@ -722,7 +722,7 @@ Value to replace empty cells with in the value column only. Default keeps blanks
 **Description**
 
 ```
-Wraps content with opening and closing delimiters. Useful for generating HTML/XML tags, brackets, or any paired delimiter pattern around text or cell values.
+v1.0.0 Wraps content with opening and closing delimiters. Useful for generating HTML/XML tags, brackets, or any paired delimiter pattern around text or cell values.
 ```
 
 **Parameters**
