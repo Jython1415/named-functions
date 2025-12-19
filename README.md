@@ -9,6 +9,7 @@ A collection of named Excel/Google Sheets formulas using LET and LAMBDA function
 
 ### Quick Reference
 
+- **[BLANK](#blank)** - Returns a truly blank cell value. This is useful in LAMBDA functions and MAP operations where you want to return blank cells rather than empty strings or other values. Equivalent to using the omitted argument syntax in IF (e.g., IF(condition, , value)), but more semantically clear and readable.
 - **[BYROW_COMPLETE_ONLY](#byrow_complete_only)** - Applies a row operation only to complete rows (rows with no blank cells). Incomplete rows return a specified fallback value. Useful for processing data while gracefully handling missing values.
 - **[BYROW_NONEMPTY_ONLY](#byrow_nonempty_only)** - Applies a row operation only to non-empty rows (rows with at least one non-blank cell). Completely empty rows return a specified fallback value. Useful for filtering out empty rows during processing.
 - **[DENSIFY](#densify)** - Removes empty or incomplete rows and columns from sparse data. Use mode to control which dimensions to process and how strict to be. Supports data validation (remove incomplete records) and whitespace handling (treat spaces as empty).
@@ -17,6 +18,25 @@ A collection of named Excel/Google Sheets formulas using LET and LAMBDA function
 - **[UNPIVOT](#unpivot)** - Transforms wide-format data into long-format (tidy data) by unpivoting specified columns into attribute-value pairs.
 
 ### Detailed Formulas
+
+<details>
+<summary><strong>BLANK</strong></summary>
+
+### BLANK
+
+**Description**
+
+```
+Returns a truly blank cell value. This is useful in LAMBDA functions and MAP operations where you want to return blank cells rather than empty strings or other values. Equivalent to using the omitted argument syntax in IF (e.g., IF(condition, , value)), but more semantically clear and readable.
+```
+
+**Formula**
+
+```
+LAMBDA(input, IF(,,))(0)
+```
+
+</details>
 
 <details>
 <summary><strong>BYROW_COMPLETE_ONLY</strong></summary>
@@ -76,7 +96,7 @@ Value to return for rows that contain any blank cells
 **Example:**
 
 ```
-""
+BLANK()
 ```
 
 #### row_operation
@@ -153,7 +173,7 @@ Value to return for rows that are completely empty (all cells blank)
 **Example:**
 
 ```
-""
+BLANK()
 ```
 
 #### row_operation
@@ -211,8 +231,8 @@ Removes empty or incomplete rows and columns from sparse data. Use mode to contr
         LET(
           threshold, IF(has_any, COLUMNS(range), 1),
           IF(has_strict,
-            IFNA(FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((LEN(TRIM(r)) > 0) * 1) >= threshold))), ""),
-            IFNA(FILTER(range, BYROW(range, LAMBDA(r, COUNTA(r) >= threshold))), "")
+            IFNA(FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((LEN(TRIM(r)) > 0) * 1) >= threshold))), BLANK()),
+            IFNA(FILTER(range, BYROW(range, LAMBDA(r, COUNTA(r) >= threshold))), BLANK())
           )
         ),
         range
@@ -224,8 +244,8 @@ Removes empty or incomplete rows and columns from sparse data. Use mode to contr
           threshold, IF(has_any, ROWS(rows_filtered), 1),
           TRANSPOSE(
             IF(has_strict,
-              IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((LEN(TRIM(c)) > 0) * 1) >= threshold))), ""),
-              IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, COUNTA(c) >= threshold))), "")
+              IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((LEN(TRIM(c)) > 0) * 1) >= threshold))), BLANK()),
+              IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, COUNTA(c) >= threshold))), BLANK())
             )
           )
         ),
@@ -306,8 +326,8 @@ Removes rows that have at least one blank cell from sparse data. This is a conve
         LET(
           threshold, IF(has_any, COLUMNS(range), 1),
           IF(has_strict,
-            IFNA(FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((LEN(TRIM(r)) > 0) * 1) >= threshold))), ""),
-            IFNA(FILTER(range, BYROW(range, LAMBDA(r, COUNTA(r) >= threshold))), "")
+            IFNA(FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((LEN(TRIM(r)) > 0) * 1) >= threshold))), BLANK()),
+            IFNA(FILTER(range, BYROW(range, LAMBDA(r, COUNTA(r) >= threshold))), BLANK())
           )
         ),
         range
@@ -319,8 +339,8 @@ Removes rows that have at least one blank cell from sparse data. This is a conve
           threshold, IF(has_any, ROWS(rows_filtered), 1),
           TRANSPOSE(
             IF(has_strict,
-              IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((LEN(TRIM(c)) > 0) * 1) >= threshold))), ""),
-              IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, COUNTA(c) >= threshold))), "")
+              IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((LEN(TRIM(c)) > 0) * 1) >= threshold))), BLANK()),
+              IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, COUNTA(c) >= threshold))), BLANK())
             )
           )
         ),
