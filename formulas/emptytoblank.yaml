@@ -1,0 +1,14 @@
+name: EMPTYTOBLANK
+version: 1.0.0
+
+description: >
+  Converts empty strings to blank cells in a range. Useful for cleaning data where empty strings
+  should be represented as true blanks. Works with MAP operations to transform arrays.
+
+parameters:
+  - name: value
+    description: Single value or range to convert (empty strings become blank cells)
+    example: "A1:B10"
+
+formula: |
+  IF(value = "", BLANK(), value)

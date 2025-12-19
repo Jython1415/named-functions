@@ -1,0 +1,14 @@
+name: BLANKTOEMPTY
+version: 1.0.0
+
+description: >
+  Converts blank cells to empty strings in a range. Useful for ensuring consistent handling
+  of empty values where blank cells need to be represented as empty strings ("").
+
+parameters:
+  - name: value
+    description: Single value or range to convert (blank cells become empty strings)
+    example: "A1:B10"
+
+formula: |
+  IF(ISBLANK(value), "", value)
