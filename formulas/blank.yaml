@@ -1,5 +1,5 @@
 name: BLANK
-version: 1.0.0
+version: 1.0.1
 
 description: >
   Returns a truly blank cell value. This is useful in LAMBDA functions and MAP operations
@@ -10,4 +10,4 @@ description: >
 parameters: []
 
 formula: |
-  LAMBDA(input, )(0)
+  LAMBDA(input, IF(,,))(0)
