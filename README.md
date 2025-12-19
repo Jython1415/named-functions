@@ -16,6 +16,7 @@ A collection of named Excel/Google Sheets formulas using LET and LAMBDA function
 - **[DENSIFYROWS](#densifyrows)** - Removes rows that have at least one blank cell from sparse data. This is a convenience wrapper around DENSIFY that specifically targets row operations with the "rows-any" mode.
 - **[GROUPBY](#groupby)** - Groups data by one or more columns and applies custom aggregation logic via LAMBDA functions, implementing SQL-like GROUP BY functionality. Does not handle headers - provide data without header row.
 - **[UNPIVOT](#unpivot)** - Transforms wide-format data into long-format (tidy data) by unpivoting specified columns into attribute-value pairs.
+- **[WRAP](#wrap)** - Wraps content with opening and closing delimiters. Useful for generating HTML/XML tags, brackets, or any paired delimiter pattern around text or cell values.
 
 ### Detailed Formulas
 
@@ -709,6 +710,62 @@ Specifies which columns to unpivot. Can be array of strings (column names) or ar
 
 ```
 Value to replace empty cells with in the value column only. Default keeps blanks as-is. Different from filtering (use FILTER() wrapper to remove rows).
+```
+
+</details>
+
+<details>
+<summary><strong>WRAP</strong></summary>
+
+### WRAP
+
+**Description**
+
+```
+Wraps content with opening and closing delimiters. Useful for generating HTML/XML tags, brackets, or any paired delimiter pattern around text or cell values.
+```
+
+**Parameters**
+
+```
+1. delimiter
+2. contents
+```
+
+**Formula**
+
+```
+LAMBDA(delimiter, contents,
+  "<" & delimiter & ">" & contents & "</" & delimiter & ">"
+)
+```
+
+#### delimiter
+
+**Description:**
+
+```
+The delimiter name (e.g., "div", "span", "strong") used to create the opening and closing wrapper
+```
+
+**Example:**
+
+```
+div
+```
+
+#### contents
+
+**Description:**
+
+```
+The content to be wrapped
+```
+
+**Example:**
+
+```
+A1
 ```
 
 </details>
