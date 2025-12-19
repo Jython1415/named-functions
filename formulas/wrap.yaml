@@ -1,0 +1,20 @@
+name: WRAP
+version: 1.0.0
+
+description: >
+  Wraps content with opening and closing delimiters. Useful for generating HTML/XML tags,
+  brackets, or any paired delimiter pattern around text or cell values.
+
+parameters:
+  - name: delimiter
+    description: The delimiter name (e.g., "div", "span", "strong") used to create the opening and closing wrapper
+    example: "div"
+
+  - name: contents
+    description: The content to be wrapped
+    example: "A1"
+
+formula: |
+  LAMBDA(delimiter, contents,
+    "<" & delimiter & ">" & contents & "</" & delimiter & ">"
+  )
