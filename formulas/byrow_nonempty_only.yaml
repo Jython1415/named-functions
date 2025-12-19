@@ -1,5 +1,5 @@
 name: BYROW_NONEMPTY_ONLY
-version: 1.0.0
+version: 1.0.1
 
 description: >
   Applies a row operation only to non-empty rows (rows with at least one non-blank cell). Completely empty rows return a specified fallback value. Useful for filtering out empty rows during processing.
@@ -11,7 +11,7 @@ parameters:
 
   - name: value_if_empty
     description: Value to return for rows that are completely empty (all cells blank)
-    example: '""'
+    example: 'BLANK()'
 
   - name: row_operation
     description: LAMBDA function to apply to each non-empty row. Receives a single row as input.

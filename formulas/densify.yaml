@@ -1,5 +1,5 @@
 name: DENSIFY
-version: 1.0.2
+version: 1.0.3
 
 description: >
   Removes empty or incomplete rows and columns from sparse data. Use mode to control
@@ -37,8 +37,8 @@ formula: |
           LET(
             threshold, IF(has_any, COLUMNS(range), 1),
             IF(has_strict,
-              IFNA(FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((LEN(TRIM(r)) > 0) * 1) >= threshold))), ""),
-              IFNA(FILTER(range, BYROW(range, LAMBDA(r, COUNTA(r) >= threshold))), "")
+              IFNA(FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((LEN(TRIM(r)) > 0) * 1) >= threshold))), BLANK()),
+              IFNA(FILTER(range, BYROW(range, LAMBDA(r, COUNTA(r) >= threshold))), BLANK())
             )
           ),
           range
@@ -50,8 +50,8 @@ formula: |
             threshold, IF(has_any, ROWS(rows_filtered), 1),
             TRANSPOSE(
               IF(has_strict,
-                IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((LEN(TRIM(c)) > 0) * 1) >= threshold))), ""),
-                IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, COUNTA(c) >= threshold))), "")
+                IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((LEN(TRIM(c)) > 0) * 1) >= threshold))), BLANK()),
+                IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, COUNTA(c) >= threshold))), BLANK())
               )
             )
           ),
