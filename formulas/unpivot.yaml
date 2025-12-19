@@ -1,5 +1,5 @@
 name: UNPIVOT
-version: 1.0.1
+version: 1.0.2
 
 description: >
   Transforms wide-format data into long-format (tidy data) by unpivoting

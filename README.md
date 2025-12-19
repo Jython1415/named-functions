@@ -10,12 +10,12 @@ A collection of named Excel/Google Sheets formulas using LET and LAMBDA function
 ### Quick Reference
 
 - **[BLANK](#blank)** - Returns a truly blank cell value. This is useful in LAMBDA functions and MAP operations where you want to return blank cells rather than empty strings or other values. Equivalent to using the omitted argument syntax in IF (e.g., IF(condition, , value)), but more semantically clear and readable.
-- **[BLANKTOEMPTY](#blanktoempty)** - Converts blank cells to empty strings in a range. Useful for ensuring consistent handling of empty values where blank cells need to be represented as empty strings ("").
+- **[BLANKTOEMPTY](#blanktoempty)** - Converts blank cells to empty strings. Accepts either a single value or a range. When given a range, automatically applies the conversion to all cells using MAP. Useful for ensuring consistent handling of empty values where blank cells need to be represented as empty strings ("").
 - **[BYROW_COMPLETE_ONLY](#byrow_complete_only)** - Applies a row operation only to complete rows (rows with no blank cells). Incomplete rows return a specified fallback value. Useful for processing data while gracefully handling missing values.
 - **[BYROW_NONEMPTY_ONLY](#byrow_nonempty_only)** - Applies a row operation only to non-empty rows (rows with at least one non-blank cell). Completely empty rows return a specified fallback value. Useful for filtering out empty rows during processing.
 - **[DENSIFY](#densify)** - Removes empty or incomplete rows and columns from sparse data. Use mode to control which dimensions to process and how strict to be. Supports data validation (remove incomplete records) and whitespace handling (treat spaces as empty).
 - **[DENSIFYROWS](#densifyrows)** - Removes rows that have at least one blank cell from sparse data. This is a convenience wrapper around DENSIFY that specifically targets row operations with the "rows-any" mode.
-- **[EMPTYTOBLANK](#emptytoblank)** - Converts empty strings to blank cells in a range. Useful for cleaning data where empty strings should be represented as true blanks. Works with MAP operations to transform arrays.
+- **[EMPTYTOBLANK](#emptytoblank)** - Converts empty strings to blank cells. Accepts either a single value or a range. When given a range, automatically applies the conversion to all cells using MAP. Useful for cleaning data where empty strings should be represented as true blanks.
 - **[GROUPBY](#groupby)** - Groups data by one or more columns and applies custom aggregation logic via LAMBDA functions, implementing SQL-like GROUP BY functionality. Does not handle headers - provide data without header row.
 - **[UNPIVOT](#unpivot)** - Transforms wide-format data into long-format (tidy data) by unpivoting specified columns into attribute-value pairs.
 - **[WRAP](#wrap)** - Wraps content with opening and closing delimiters. Useful for generating HTML/XML tags, brackets, or any paired delimiter pattern around text or cell values.
@@ -49,22 +49,22 @@ LAMBDA(input, IF(,,))(0)
 **Description**
 
 ```
-v1.0.0 Converts blank cells to empty strings in a range. Useful for ensuring consistent handling of empty values where blank cells need to be represented as empty strings ("").
+v1.1.0 Converts blank cells to empty strings. Accepts either a single value or a range. When given a range, automatically applies the conversion to all cells using MAP. Useful for ensuring consistent handling of empty values where blank cells need to be represented as empty strings ("").
 ```
 
 **Parameters**
 
 ```
-1. value
+1. input
 ```
 
 **Formula**
 
 ```
-IF(ISBLANK(value), "", value)
+MAP(input, LAMBDA(v, IF(ISBLANK(v), "", v)))
 ```
 
-#### value
+#### input
 
 **Description:**
 
@@ -419,22 +419,22 @@ A1:Z100
 **Description**
 
 ```
-v1.0.0 Converts empty strings to blank cells in a range. Useful for cleaning data where empty strings should be represented as true blanks. Works with MAP operations to transform arrays.
+v1.1.0 Converts empty strings to blank cells. Accepts either a single value or a range. When given a range, automatically applies the conversion to all cells using MAP. Useful for cleaning data where empty strings should be represented as true blanks.
 ```
 
 **Parameters**
 
 ```
-1. value
+1. input
 ```
 
 **Formula**
 
 ```
-IF(value = "", BLANK(), value)
+MAP(input, LAMBDA(v, IF(v = "", BLANK(), v)))
 ```
 
-#### value
+#### input
 
 **Description:**
 
@@ -608,7 +608,7 @@ LAMBDA(v, SUM(v))
 **Description**
 
 ```
-v1.0.1 Transforms wide-format data into long-format (tidy data) by unpivoting specified columns into attribute-value pairs.
+v1.0.2 Transforms wide-format data into long-format (tidy data) by unpivoting specified columns into attribute-value pairs.
 ```
 
 **Parameters**
