@@ -350,7 +350,49 @@ v2.0.0 Removes rows that are entirely blank from sparse data. This is a convenie
 **Formula**
 
 ```
-=DENSIFY(range, "rows")
+=LET(
+  actual_mode, IF(OR("rows"="", "rows"=0), "both", LOWER(TRIM("rows"))),
+  mode_parts, SPLIT(actual_mode, "-"),
+  dimension, INDEX(mode_parts, 1),
+  has_any, IFERROR(FIND("any", actual_mode) > 0, FALSE),
+  has_strict, IFERROR(FIND("strict", actual_mode) > 0, FALSE),
+  valid_dimension, OR(dimension = "both", dimension = "rows", dimension = "cols"),
+
+  IF(NOT(valid_dimension),
+    NA(),
+    LET(
+      should_remove_rows, OR(dimension = "both", dimension = "rows"),
+      should_remove_cols, OR(dimension = "both", dimension = "cols"),
+
+      rows_filtered, IF(should_remove_rows,
+        LET(
+          threshold, IF(has_any, COLUMNS(range), 1),
+          IF(has_strict,
+            IFNA(FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((LEN(TRIM(r)) > 0) * 1) >= threshold))), BLANK()),
+            IFNA(FILTER(range, BYROW(range, LAMBDA(r, COUNTA(r) >= threshold))), BLANK())
+          )
+        ),
+        range
+      ),
+
+      final, IF(should_remove_cols,
+        LET(
+          transposed, TRANSPOSE(rows_filtered),
+          threshold, IF(has_any, ROWS(rows_filtered), 1),
+          TRANSPOSE(
+            IF(has_strict,
+              IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((LEN(TRIM(c)) > 0) * 1) >= threshold))), BLANK()),
+              IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, COUNTA(c) >= threshold))), BLANK())
+            )
+          )
+        ),
+        rows_filtered
+      ),
+
+      final
+    )
+  )
+)
 ```
 
 #### range
