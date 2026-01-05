@@ -23,7 +23,7 @@ import yaml
 from pyparsing import (
     Forward, Word, alphas, alphanums, QuotedString,
     Literal, Group, delimitedList, ParseException,
-    ParseResults, pyparsing_common
+    ParseResults, pyparsing_common, MatchFirst
 )
 
 
@@ -44,7 +44,11 @@ class FormulaParser:
         comma = Literal(",")
 
         # String literals (handle escaped quotes)
-        string_literal = QuotedString('"', escChar='\\') | QuotedString("'", escChar='\\')
+        # Wrap in a marker to preserve information that these were quoted
+        string_literal = (
+            (QuotedString('"', escChar='\\') | QuotedString("'", escChar='\\'))
+            .setParseAction(lambda t: ('__STRING_LITERAL__', t[0]))
+        )
 
         # Numbers
         number = pyparsing_common.number()
@@ -157,15 +161,12 @@ class FormulaParser:
         """
         def stringify(arg):
             """Convert argument to string representation."""
-            if isinstance(arg, str):
-                # Empty string should be quoted
-                if arg == '':
-                    return '""'
-                # Check if it's a string literal (contains special chars or hyphens)
-                # If it looks like it was originally quoted, add quotes back
-                if any(c in arg for c in ['-', ' ', ',', '(', ')', '{', '}']) or arg.lower() in ['true', 'false']:
-                    # Use double quotes
-                    return f'"{arg}"'
+            # Check if it's a marked string literal
+            if isinstance(arg, tuple) and len(arg) == 2 and arg[0] == '__STRING_LITERAL__':
+                # It's a quoted string literal, add quotes back
+                return f'"{arg[1]}"'
+            elif isinstance(arg, str):
+                # It's an identifier, return as-is
                 return arg
             elif isinstance(arg, (int, float)):
                 return str(arg)
@@ -356,15 +357,12 @@ def substitute_arguments(
         param_name = param['name']
 
         # Convert argument to string
-        if isinstance(arg, str):
-            # Empty string should be quoted
-            if arg == '':
-                arg_str = '""'
-            # For string literals, preserve quoting if they contain special characters
-            elif any(c in arg for c in ['-', ' ', ',', '(', ')', '{', '}']) or arg.lower() in ['true', 'false']:
-                arg_str = f'"{arg}"'
-            else:
-                arg_str = arg
+        if isinstance(arg, tuple) and len(arg) == 2 and arg[0] == '__STRING_LITERAL__':
+            # It's a marked string literal, add quotes back
+            arg_str = f'"{arg[1]}"'
+        elif isinstance(arg, str):
+            # It's an identifier or unquoted value, return as-is
+            arg_str = arg
         elif isinstance(arg, (int, float)):
             arg_str = str(arg)
         elif isinstance(arg, ParseResults):
