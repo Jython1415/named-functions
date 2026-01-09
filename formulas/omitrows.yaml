@@ -1,0 +1,49 @@
+name: OMITROWS
+version: 1.0.0
+
+description: >
+  Excludes specified rows from a range. This is the negation of CHOOSEROWS -
+  instead of selecting rows to keep, it selects rows to remove.
+
+parameters:
+  - name: range
+    description: The input data range
+    example: "A1:Z100"
+
+  - name: row_nums
+    description: >
+      Row numbers to exclude (1-based indices). Can be a single number,
+      an array of numbers, or a sequence. Negative numbers count from the end
+      (-1 is the last row, -2 is second to last, etc).
+    example: "{1, 5, 10}"
+
+formula: |
+  LET(
+    total_rows, ROWS(range),
+
+    /* Convert row_nums to a flat array */
+    rows_to_omit, FLATTEN(row_nums),
+
+    /* Convert negative indices to positive (e.g., -1 becomes total_rows) */
+    normalized_omit, MAKEARRAY(ROWS(rows_to_omit), COLUMNS(rows_to_omit), LAMBDA(r, c,
+      LET(
+        idx, INDEX(rows_to_omit, r, c),
+        IF(idx < 0, total_rows + idx + 1, idx)
+      )
+    )),
+
+    /* Create sequence of all row indices */
+    all_rows, SEQUENCE(total_rows, 1),
+
+    /* Filter to keep only rows not in the omit list */
+    rows_to_keep, FILTER(all_rows, ISNA(MATCH(all_rows, FLATTEN(normalized_omit), 0))),
+
+    /* Validate we have rows left */
+    _validate, IF(ROWS(rows_to_keep) = 0,
+      ERROR("Cannot omit all rows from range"),
+      TRUE
+    ),
+
+    /* Return the range with omitted rows removed */
+    CHOOSEROWS(range, rows_to_keep)
+  )

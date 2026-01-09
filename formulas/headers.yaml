@@ -1,0 +1,34 @@
+name: HEADERS
+version: 1.0.0
+
+description: >
+  Extracts the header row (first row) from a data range. This is useful for
+  separating headers from data, especially when working with structured data.
+
+parameters:
+  - name: range
+    description: The data range including headers
+    example: "A1:Z100"
+
+  - name: num_rows
+    description: >
+      Number of header rows to extract (default: 1). Use this when you have
+      multi-row headers.
+    example: 1
+
+formula: |
+  LET(
+    rows, IF(OR(num_rows = "", ISBLANK(num_rows)), 1, num_rows),
+
+    /* Validate we have enough rows */
+    _validate, IF(rows > ROWS(range),
+      ERROR("num_rows (" & rows & ") exceeds total rows in range (" & ROWS(range) & ")"),
+      TRUE
+    ),
+
+    /* Extract the header row(s) */
+    IF(rows = 1,
+      CHOOSEROWS(range, 1),
+      CHOOSEROWS(range, SEQUENCE(rows))
+    )
+  )

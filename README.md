@@ -13,10 +13,14 @@ A collection of named Excel/Google Sheets formulas using LET and LAMBDA function
 - **[BLANKTOEMPTY](#blanktoempty)** - Converts blank cells to empty strings. Accepts either a single value or a range. When given a range, automatically applies the conversion to all cells using MAP. Useful for ensuring consistent handling of empty values where blank cells need to be represented as empty strings ("").
 - **[BYROW_COMPLETE_ONLY](#byrow_complete_only)** - Applies a row operation only to complete rows (rows with no blank cells). Incomplete rows return a specified fallback value. Useful for processing data while gracefully handling missing values.
 - **[BYROW_NONEMPTY_ONLY](#byrow_nonempty_only)** - Applies a row operation only to non-empty rows (rows with at least one non-blank cell). Completely empty rows return a specified fallback value. Useful for filtering out empty rows during processing.
+- **[DATAROWS](#datarows)** - Extracts all data rows (excluding header rows) from a data range. This is useful for separating data from headers, especially when performing operations that should only apply to data rows.
 - **[DENSIFY](#densify)** - Removes empty or incomplete rows and columns from sparse data. Use mode to control which dimensions to process and how strict to be. Supports data validation (remove incomplete records) and whitespace handling (treat spaces as empty).
 - **[DENSIFYROWS](#densifyrows)** - Removes rows that are entirely blank from sparse data. This is a convenience wrapper around DENSIFY that specifically targets row operations with the "rows" mode.
 - **[EMPTYTOBLANK](#emptytoblank)** - Converts empty strings to blank cells. Accepts either a single value or a range. When given a range, automatically applies the conversion to all cells using MAP. Useful for cleaning data where empty strings should be represented as true blanks.
 - **[GROUPBY](#groupby)** - Groups data by one or more columns and applies custom aggregation logic via LAMBDA functions, implementing SQL-like GROUP BY functionality. Does not handle headers - provide data without header row.
+- **[HEADERS](#headers)** - Extracts the header row (first row) from a data range. This is useful for separating headers from data, especially when working with structured data.
+- **[OMITCOLS](#omitcols)** - Excludes specified columns from a range. This is the negation of CHOOSECOLS - instead of selecting columns to keep, it selects columns to remove.
+- **[OMITROWS](#omitrows)** - Excludes specified rows from a range. This is the negation of CHOOSEROWS - instead of selecting rows to keep, it selects rows to remove.
 - **[UNPIVOT](#unpivot)** - Transforms wide-format data into long-format (tidy data) by unpivoting specified columns into attribute-value pairs.
 - **[WRAP](#wrap)** - Wraps content with opening and closing delimiters. Useful for generating HTML/XML tags, brackets, or any paired delimiter pattern around text or cell values.
 
@@ -230,6 +234,72 @@ LAMBDA function to apply to each non-empty row. Receives a single row as input.
 
 ```
 LAMBDA(row, TEXTJOIN(", ", TRUE, row))
+```
+
+</details>
+
+<details>
+<summary><strong>DATAROWS</strong></summary>
+
+### DATAROWS
+
+**Description**
+
+```
+v1.0.0 Extracts all data rows (excluding header rows) from a data range. This is useful for separating data from headers, especially when performing operations that should only apply to data rows.
+```
+
+**Parameters**
+
+```
+1. range
+2. num_header_rows
+```
+
+**Formula**
+
+```
+LET(
+  header_rows, IF(OR(num_header_rows = "", ISBLANK(num_header_rows)), 1, num_header_rows),
+
+  /* Validate we have enough rows */
+  total_rows, ROWS(range),
+  _validate, IF(header_rows >= total_rows,
+    ERROR("num_header_rows (" & header_rows & ") must be less than total rows (" & total_rows & ")"),
+    TRUE
+  ),
+
+  /* Use OMITROWS to exclude the header row(s) */
+  OMITROWS(range, SEQUENCE(header_rows))
+)
+```
+
+#### range
+
+**Description:**
+
+```
+The data range including headers
+```
+
+**Example:**
+
+```
+A1:Z100
+```
+
+#### num_header_rows
+
+**Description:**
+
+```
+Number of header rows to skip (default: 1). Use this when you have multi-row headers.
+```
+
+**Example:**
+
+```
+1
 ```
 
 </details>
@@ -596,6 +666,238 @@ LAMBDA function that receives filtered values and returns aggregation result(s).
 
 ```
 LAMBDA(v, SUM(v))
+```
+
+</details>
+
+<details>
+<summary><strong>HEADERS</strong></summary>
+
+### HEADERS
+
+**Description**
+
+```
+v1.0.0 Extracts the header row (first row) from a data range. This is useful for separating headers from data, especially when working with structured data.
+```
+
+**Parameters**
+
+```
+1. range
+2. num_rows
+```
+
+**Formula**
+
+```
+LET(
+  rows, IF(OR(num_rows = "", ISBLANK(num_rows)), 1, num_rows),
+
+  /* Validate we have enough rows */
+  _validate, IF(rows > ROWS(range),
+    ERROR("num_rows (" & rows & ") exceeds total rows in range (" & ROWS(range) & ")"),
+    TRUE
+  ),
+
+  /* Extract the header row(s) */
+  IF(rows = 1,
+    CHOOSEROWS(range, 1),
+    CHOOSEROWS(range, SEQUENCE(rows))
+  )
+)
+```
+
+#### range
+
+**Description:**
+
+```
+The data range including headers
+```
+
+**Example:**
+
+```
+A1:Z100
+```
+
+#### num_rows
+
+**Description:**
+
+```
+Number of header rows to extract (default: 1). Use this when you have multi-row headers.
+```
+
+**Example:**
+
+```
+1
+```
+
+</details>
+
+<details>
+<summary><strong>OMITCOLS</strong></summary>
+
+### OMITCOLS
+
+**Description**
+
+```
+v1.0.0 Excludes specified columns from a range. This is the negation of CHOOSECOLS - instead of selecting columns to keep, it selects columns to remove.
+```
+
+**Parameters**
+
+```
+1. range
+2. col_nums
+```
+
+**Formula**
+
+```
+LET(
+  total_cols, COLUMNS(range),
+
+  /* Convert col_nums to a flat array */
+  cols_to_omit, FLATTEN(col_nums),
+
+  /* Convert negative indices to positive (e.g., -1 becomes total_cols) */
+  normalized_omit, MAKEARRAY(ROWS(cols_to_omit), COLUMNS(cols_to_omit), LAMBDA(r, c,
+    LET(
+      idx, INDEX(cols_to_omit, r, c),
+      IF(idx < 0, total_cols + idx + 1, idx)
+    )
+  )),
+
+  /* Create sequence of all column indices */
+  all_cols, SEQUENCE(1, total_cols),
+
+  /* Filter to keep only columns not in the omit list */
+  cols_to_keep, FILTER(all_cols, ISNA(MATCH(all_cols, FLATTEN(normalized_omit), 0))),
+
+  /* Validate we have columns left */
+  _validate, IF(COLUMNS(cols_to_keep) = 0,
+    ERROR("Cannot omit all columns from range"),
+    TRUE
+  ),
+
+  /* Return the range with omitted columns removed */
+  CHOOSECOLS(range, cols_to_keep)
+)
+```
+
+#### range
+
+**Description:**
+
+```
+The input data range
+```
+
+**Example:**
+
+```
+A1:Z100
+```
+
+#### col_nums
+
+**Description:**
+
+```
+Column numbers to exclude (1-based indices). Can be a single number, an array of numbers, or a sequence. Negative numbers count from the end (-1 is the last column, -2 is second to last, etc).
+```
+
+**Example:**
+
+```
+{2, 5, 7}
+```
+
+</details>
+
+<details>
+<summary><strong>OMITROWS</strong></summary>
+
+### OMITROWS
+
+**Description**
+
+```
+v1.0.0 Excludes specified rows from a range. This is the negation of CHOOSEROWS - instead of selecting rows to keep, it selects rows to remove.
+```
+
+**Parameters**
+
+```
+1. range
+2. row_nums
+```
+
+**Formula**
+
+```
+LET(
+  total_rows, ROWS(range),
+
+  /* Convert row_nums to a flat array */
+  rows_to_omit, FLATTEN(row_nums),
+
+  /* Convert negative indices to positive (e.g., -1 becomes total_rows) */
+  normalized_omit, MAKEARRAY(ROWS(rows_to_omit), COLUMNS(rows_to_omit), LAMBDA(r, c,
+    LET(
+      idx, INDEX(rows_to_omit, r, c),
+      IF(idx < 0, total_rows + idx + 1, idx)
+    )
+  )),
+
+  /* Create sequence of all row indices */
+  all_rows, SEQUENCE(total_rows, 1),
+
+  /* Filter to keep only rows not in the omit list */
+  rows_to_keep, FILTER(all_rows, ISNA(MATCH(all_rows, FLATTEN(normalized_omit), 0))),
+
+  /* Validate we have rows left */
+  _validate, IF(ROWS(rows_to_keep) = 0,
+    ERROR("Cannot omit all rows from range"),
+    TRUE
+  ),
+
+  /* Return the range with omitted rows removed */
+  CHOOSEROWS(range, rows_to_keep)
+)
+```
+
+#### range
+
+**Description:**
+
+```
+The input data range
+```
+
+**Example:**
+
+```
+A1:Z100
+```
+
+#### row_nums
+
+**Description:**
+
+```
+Row numbers to exclude (1-based indices). Can be a single number, an array of numbers, or a sequence. Negative numbers count from the end (-1 is the last row, -2 is second to last, etc).
+```
+
+**Example:**
+
+```
+{1, 5, 10}
 ```
 
 </details>
