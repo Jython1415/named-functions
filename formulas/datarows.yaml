@@ -1,0 +1,33 @@
+name: DATAROWS
+version: 1.0.0
+
+description: >
+  Extracts all data rows (excluding header rows) from a data range. This is
+  useful for separating data from headers, especially when performing operations
+  that should only apply to data rows.
+
+parameters:
+  - name: range
+    description: The data range including headers
+    example: "A1:Z100"
+
+  - name: num_header_rows
+    description: >
+      Number of header rows to skip (default: 1). Use this when you have
+      multi-row headers.
+    example: 1
+
+formula: |
+  LET(
+    header_rows, IF(OR(num_header_rows = "", ISBLANK(num_header_rows)), 1, num_header_rows),
+
+    /* Validate we have enough rows */
+    total_rows, ROWS(range),
+    _validate, IF(header_rows >= total_rows,
+      ERROR("num_header_rows (" & header_rows & ") must be less than total rows (" & total_rows & ")"),
+      TRUE
+    ),
+
+    /* Use OMITROWS to exclude the header row(s) */
+    OMITROWS(range, SEQUENCE(header_rows))
+  )

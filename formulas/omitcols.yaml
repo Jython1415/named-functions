@@ -1,0 +1,25 @@
+name: OMITCOLS
+version: 1.0.0
+
+description: >
+  Excludes specified columns from a range. This is the negation of CHOOSECOLS -
+  instead of selecting columns to keep, it selects columns to remove.
+
+parameters:
+  - name: range
+    description: The input data range
+    example: "A1:Z100"
+
+  - name: col_nums
+    description: >
+      Column numbers to exclude (1-based indices). Can be a single number,
+      an array of numbers, or a sequence. Negative numbers count from the end
+      (-1 is the last column, -2 is second to last, etc).
+    example: "{2, 5, 7}"
+
+formula: |
+  LET(
+    transposed, TRANSPOSE(range),
+    result, OMITROWS(transposed, col_nums),
+    TRANSPOSE(result)
+  )
