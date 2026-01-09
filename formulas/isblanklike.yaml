@@ -1,0 +1,16 @@
+name: ISBLANKLIKE
+version: 1.0.0
+
+description: >
+  Checks if a cell is either truly blank (ISBLANK) or an empty string ("").
+  This is useful for identifying cells that appear empty but may contain empty
+  strings from formulas or data imports. Returns TRUE if the cell is blank-like,
+  FALSE otherwise.
+
+parameters:
+  - name: cell
+    description: The cell to check for blank-like condition
+    example: "A1"
+
+formula: |
+  LAMBDA(cell, OR(ISBLANK(cell), cell = ""))
