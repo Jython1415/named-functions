@@ -17,6 +17,7 @@ A collection of named Excel/Google Sheets formulas using LET and LAMBDA function
 - **[DENSIFYROWS](#densifyrows)** - Removes rows that are entirely blank from sparse data. This is a convenience wrapper around DENSIFY that specifically targets row operations with the "rows" mode.
 - **[EMPTYTOBLANK](#emptytoblank)** - Converts empty strings to blank cells. Accepts either a single value or a range. When given a range, automatically applies the conversion to all cells using MAP. Useful for cleaning data where empty strings should be represented as true blanks.
 - **[GROUPBY](#groupby)** - Groups data by one or more columns and applies custom aggregation logic via LAMBDA functions, implementing SQL-like GROUP BY functionality. Does not handle headers - provide data without header row.
+- **[ISBLANKLIKE](#isblanklike)** - Checks if a cell is either truly blank (ISBLANK) or an empty string (""). This is useful for identifying cells that appear empty but may contain empty strings from formulas or data imports. Returns TRUE if the cell is blank-like, FALSE otherwise.
 - **[UNPIVOT](#unpivot)** - Transforms wide-format data into long-format (tidy data) by unpivoting specified columns into attribute-value pairs.
 - **[WRAP](#wrap)** - Wraps content with opening and closing delimiters. Useful for generating HTML/XML tags, brackets, or any paired delimiter pattern around text or cell values.
 
@@ -596,6 +597,45 @@ LAMBDA function that receives filtered values and returns aggregation result(s).
 
 ```
 LAMBDA(v, SUM(v))
+```
+
+</details>
+
+<details>
+<summary><strong>ISBLANKLIKE</strong></summary>
+
+### ISBLANKLIKE
+
+**Description**
+
+```
+v1.0.0 Checks if a cell is either truly blank (ISBLANK) or an empty string (""). This is useful for identifying cells that appear empty but may contain empty strings from formulas or data imports. Returns TRUE if the cell is blank-like, FALSE otherwise.
+```
+
+**Parameters**
+
+```
+1. cell
+```
+
+**Formula**
+
+```
+LAMBDA(cell, OR(ISBLANK(cell), cell = ""))
+```
+
+#### cell
+
+**Description:**
+
+```
+The cell to check for blank-like condition
+```
+
+**Example:**
+
+```
+A1
 ```
 
 </details>
