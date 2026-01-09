@@ -759,34 +759,38 @@ v1.0.0 Excludes specified columns from a range. This is the negation of CHOOSECO
 **Formula**
 
 ```
-LET(
-  total_cols, COLUMNS(range),
+=LET(
+  transposed, TRANSPOSE(range),
+  result, (LET(
+  total_rows, ROWS(transposed),
 
   /* Convert col_nums to a flat array */
-  cols_to_omit, FLATTEN(col_nums),
+  rows_to_omit, FLATTEN(col_nums),
 
-  /* Convert negative indices to positive (e.g., -1 becomes total_cols) */
-  normalized_omit, MAKEARRAY(ROWS(cols_to_omit), COLUMNS(cols_to_omit), LAMBDA(r, c,
+  /* Convert negative indices to positive (e.g., -1 becomes total_rows) */
+  normalized_omit, MAKEARRAY(ROWS(rows_to_omit), COLUMNS(rows_to_omit), LAMBDA(r, c,
     LET(
-      idx, INDEX(cols_to_omit, r, c),
-      IF(idx < 0, total_cols + idx + 1, idx)
+      idx, INDEX(rows_to_omit, r, c),
+      IF(idx < 0, total_rows + idx + 1, idx)
     )
   )),
 
-  /* Create sequence of all column indices */
-  all_cols, SEQUENCE(1, total_cols),
+  /* Create sequence of all row indices */
+  all_rows, SEQUENCE(total_rows, 1),
 
-  /* Filter to keep only columns not in the omit list */
-  cols_to_keep, FILTER(all_cols, ISNA(MATCH(all_cols, FLATTEN(normalized_omit), 0))),
+  /* Filter to keep only rows not in the omit list */
+  rows_to_keep, FILTER(all_rows, ISNA(MATCH(all_rows, FLATTEN(normalized_omit), 0))),
 
-  /* Validate we have columns left */
-  _validate, IF(COLUMNS(cols_to_keep) = 0,
-    ERROR("Cannot omit all columns from range"),
+  /* Validate we have rows left */
+  _validate, IF(ROWS(rows_to_keep) = 0,
+    ERROR("Cannot omit all rows from transposed"),
     TRUE
   ),
 
-  /* Return the range with omitted columns removed */
-  CHOOSECOLS(range, cols_to_keep)
+  /* Return the transposed with omitted rows removed */
+  CHOOSEROWS(transposed, rows_to_keep)
+)),
+  TRANSPOSE(result)
 )
 ```
 

@@ -19,31 +19,7 @@ parameters:
 
 formula: |
   LET(
-    total_cols, COLUMNS(range),
-
-    /* Convert col_nums to a flat array */
-    cols_to_omit, FLATTEN(col_nums),
-
-    /* Convert negative indices to positive (e.g., -1 becomes total_cols) */
-    normalized_omit, MAKEARRAY(ROWS(cols_to_omit), COLUMNS(cols_to_omit), LAMBDA(r, c,
-      LET(
-        idx, INDEX(cols_to_omit, r, c),
-        IF(idx < 0, total_cols + idx + 1, idx)
-      )
-    )),
-
-    /* Create sequence of all column indices */
-    all_cols, SEQUENCE(1, total_cols),
-
-    /* Filter to keep only columns not in the omit list */
-    cols_to_keep, FILTER(all_cols, ISNA(MATCH(all_cols, FLATTEN(normalized_omit), 0))),
-
-    /* Validate we have columns left */
-    _validate, IF(COLUMNS(cols_to_keep) = 0,
-      ERROR("Cannot omit all columns from range"),
-      TRUE
-    ),
-
-    /* Return the range with omitted columns removed */
-    CHOOSECOLS(range, cols_to_keep)
+    transposed, TRANSPOSE(range),
+    result, OMITROWS(transposed, col_nums),
+    TRANSPOSE(result)
   )
