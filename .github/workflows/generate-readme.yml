@@ -7,8 +7,7 @@ on:
     paths:
       - 'formulas/*.yaml'
       - '.readme-template.md'
-      - 'generate_readme.py'
-      - 'lint_formulas.py'
+      - 'scripts/*.py'
       - '.github/workflows/generate-readme.yml'
   pull_request:
     branches:
@@ -16,8 +15,7 @@ on:
     paths:
       - 'formulas/*.yaml'
       - '.readme-template.md'
-      - 'generate_readme.py'
-      - 'lint_formulas.py'
+      - 'scripts/*.py'
   workflow_dispatch:  # Allow manual triggering
 
 jobs:
@@ -39,10 +37,10 @@ jobs:
           enable-cache: true
 
       - name: Lint formula YAML files
-        run: uv run lint_formulas.py
+        run: uv run scripts/lint_formulas.py
 
       - name: Generate README
-        run: uv run generate_readme.py
+        run: uv run scripts/generate_readme.py
 
       - name: Check for changes
         id: changes
@@ -73,5 +71,5 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '⚠️ README.md needs to be regenerated. Please run `python generate_readme.py` locally and commit the changes.'
+              body: '⚠️ README.md needs to be regenerated. Please run `uv run scripts/generate_readme.py` locally and commit the changes.'
             })
