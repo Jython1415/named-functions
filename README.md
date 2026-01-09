@@ -19,6 +19,7 @@ A collection of named Excel/Google Sheets formulas using LET and LAMBDA function
 - **[EMPTYTOBLANK](#emptytoblank)** - Converts empty strings to blank cells. Accepts either a single value or a range. When given a range, automatically applies the conversion to all cells using MAP. Useful for cleaning data where empty strings should be represented as true blanks.
 - **[GROUPBY](#groupby)** - Groups data by one or more columns and applies custom aggregation logic via LAMBDA functions, implementing SQL-like GROUP BY functionality. Does not handle headers - provide data without header row.
 - **[HEADERS](#headers)** - Extracts the header row (first row) from a data range. This is useful for separating headers from data, especially when working with structured data.
+- **[ISBLANKLIKE](#isblanklike)** - Checks if a cell is either truly blank (ISBLANK) or an empty string (""). This is useful for identifying cells that appear empty but may contain empty strings from formulas or data imports. Returns TRUE if the cell is blank-like, FALSE otherwise.
 - **[OMITCOLS](#omitcols)** - Excludes specified columns from a range. This is the negation of CHOOSECOLS - instead of selecting columns to keep, it selects columns to remove.
 - **[OMITROWS](#omitrows)** - Excludes specified rows from a range. This is the negation of CHOOSEROWS - instead of selecting rows to keep, it selects rows to remove.
 - **[UNPIVOT](#unpivot)** - Transforms wide-format data into long-format (tidy data) by unpivoting specified columns into attribute-value pairs.
@@ -734,6 +735,45 @@ Number of header rows to extract (default: 1). Use this when you have multi-row 
 
 ```
 1
+```
+
+</details>
+
+<details>
+<summary><strong>ISBLANKLIKE</strong></summary>
+
+### ISBLANKLIKE
+
+**Description**
+
+```
+v1.0.0 Checks if a cell is either truly blank (ISBLANK) or an empty string (""). This is useful for identifying cells that appear empty but may contain empty strings from formulas or data imports. Returns TRUE if the cell is blank-like, FALSE otherwise.
+```
+
+**Parameters**
+
+```
+1. cell
+```
+
+**Formula**
+
+```
+LAMBDA(cell, OR(ISBLANK(cell), cell = ""))
+```
+
+#### cell
+
+**Description:**
+
+```
+The cell to check for blank-like condition
+```
+
+**Example:**
+
+```
+A1
 ```
 
 </details>
