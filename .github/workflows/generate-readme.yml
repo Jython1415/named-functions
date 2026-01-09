@@ -5,17 +5,19 @@ on:
     branches:
       - main
     paths:
-      - '*.yaml'
+      - 'formulas/*.yaml'
       - '.readme-template.md'
       - 'generate_readme.py'
+      - 'lint_formulas.py'
       - '.github/workflows/generate-readme.yml'
   pull_request:
     branches:
       - main
     paths:
-      - '*.yaml'
+      - 'formulas/*.yaml'
       - '.readme-template.md'
       - 'generate_readme.py'
+      - 'lint_formulas.py'
   workflow_dispatch:  # Allow manual triggering
 
 jobs:
@@ -35,6 +37,9 @@ jobs:
         uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
+
+      - name: Lint formula YAML files
+        run: uv run lint_formulas.py
 
       - name: Generate README
         run: uv run generate_readme.py

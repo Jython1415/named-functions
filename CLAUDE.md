@@ -11,16 +11,18 @@ named-functions/
 ├── .github/
 │   └── workflows/
 │       └── generate-readme.yml    # GitHub Actions workflow for auto-generating README
+├── formulas/
+│   └── *.yaml                     # Individual formula definitions (e.g., unpivot.yaml)
 ├── .readme-template.md            # Template for README generation
 ├── generate_readme.py             # Python script to generate README from YAML files
+├── lint_formulas.py               # Python script to lint formula YAML files
 ├── README.md                      # Auto-generated documentation
-├── LICENSE                        # Project license
-└── *.yaml                         # Individual formula definitions (e.g., unpivot.yaml)
+└── LICENSE                        # Project license
 ```
 
 ## Formula YAML Schema
 
-Each formula is defined in a `.yaml` file in the root directory with the following structure:
+Each formula is defined in a `.yaml` file in the `formulas/` directory with the following structure:
 
 ### Required Fields
 
@@ -62,14 +64,31 @@ formula: |
 
 ### Adding a New Formula
 
-1. Create a new `.yaml` file in the root directory (e.g., `myformula.yaml`)
+1. Create a new `.yaml` file in the `formulas/` directory (e.g., `formulas/myformula.yaml`)
 2. Follow the YAML schema structure above
 3. Ensure all required fields are present and valid
-4. Run `uv run generate_readme.py` locally to:
+4. Run `uv run lint_formulas.py` to check for style violations
+5. Run `uv run generate_readme.py` locally to:
    - Validate the YAML file
    - Update README.md with the new formula
-5. Commit both the `.yaml` file and the updated `README.md`
-6. Push to GitHub
+6. Commit both the `.yaml` file and the updated `README.md`
+7. Push to GitHub
+
+### Linting Formula Files
+
+Before committing, run the linter to check for style violations:
+
+```bash
+uv run lint_formulas.py
+```
+
+This will:
+- Scan all `.yaml` files in the `formulas/` directory
+- Check each file against lint rules (e.g., no leading `=` in formulas)
+- Report any violations with clear error messages
+- Exit with error code if violations are found
+
+The linter is extensible and new rules can be added by creating new `LintRule` subclasses in `lint_formulas.py`.
 
 ### Testing README Generation
 
@@ -80,27 +99,42 @@ uv run generate_readme.py
 ```
 
 This will:
-- Scan all `.yaml` files in the root directory
+- Scan all `.yaml` files in the `formulas/` directory
 - Validate each file against the schema
 - Generate/update `README.md` from `.readme-template.md`
 - Report any validation errors
 
 ### GitHub Actions Automation
 
-The repository uses GitHub Actions to automatically regenerate the README:
+The repository uses GitHub Actions to automatically validate and regenerate the README:
 
 - **On push to main**: If any `.yaml` files or related files are modified, the workflow:
-  1. Runs `generate_readme.py`
-  2. Commits and pushes updated `README.md` if changed
+  1. Runs `lint_formulas.py` to check for style violations (fails if violations found)
+  2. Runs `generate_readme.py` to regenerate README
+  3. Commits and pushes updated `README.md` if changed
 
 - **On pull requests**: If README needs regeneration, the workflow adds a comment to the PR requesting the author to regenerate locally
 
 ## Important Files
 
+### lint_formulas.py
+
+Python script that lints formula YAML files:
+- Discovers all `.yaml` files in the `formulas/` directory
+- Runs extensible lint rules against each file
+- Reports style violations with clear error messages
+- Exits with error code if violations are found
+
+**Current lint rules:**
+- **no-leading-equals**: Formulas must not start with `=` character (the equals sign is added automatically during README generation)
+
+**Adding new rules:**
+Create a new subclass of `LintRule` and add it to the `FormulaLinter.rules` list.
+
 ### generate_readme.py
 
 Python script that:
-- Discovers all `.yaml` files in the root directory
+- Discovers all `.yaml` files in the `formulas/` directory
 - Validates them against the formula schema
 - Generates formula list in markdown format
 - Updates README.md by replacing content between `<!-- AUTO-GENERATED CONTENT START -->` and `<!-- AUTO-GENERATED CONTENT END -->` markers
@@ -113,7 +147,7 @@ Template file for README generation. Contains:
 
 ### Validation Rules
 
-The script validates:
+The generate_readme.py script validates:
 - All required fields are present and non-empty
 - Field types are correct (strings, lists, dicts)
 - Parameters have required `name` and `description` fields
@@ -122,20 +156,29 @@ The script validates:
 ## Common Tasks
 
 ### Add a new formula
-1. Create `newformula.yaml` following the schema
-2. Run `uv run generate_readme.py` to validate and update README
-3. Commit both files
+1. Create `formulas/newformula.yaml` following the schema
+2. Run `uv run lint_formulas.py` to check for style violations
+3. Run `uv run generate_readme.py` to validate and update README
+4. Commit both the `.yaml` file and updated `README.md`
 
 ### Update an existing formula
-1. Edit the `.yaml` file
+1. Edit the `.yaml` file in `formulas/` directory
 2. Increment the version number
-3. Run `uv run generate_readme.py`
-4. Commit changes
+3. Run `uv run lint_formulas.py` to check for style violations
+4. Run `uv run generate_readme.py` to regenerate README
+5. Commit changes
 
 ### Modify README static content
 1. Edit `.readme-template.md` (not README.md directly)
 2. Run `uv run generate_readme.py` to regenerate README
 3. Commit both files
+
+### Add a new lint rule
+1. Open `lint_formulas.py`
+2. Create a new subclass of `LintRule` with your validation logic
+3. Add an instance of your rule to the `FormulaLinter.rules` list
+4. Test by running `uv run lint_formulas.py`
+5. Commit the updated linter
 
 ## Formula Composition
 
@@ -199,9 +242,12 @@ The composition system uses pyparsing to:
 
 ## Notes for Claude Code
 
-- Always validate YAML files after creation/modification using `uv run generate_readme.py`
-- README.md is auto-generated - edit .readme-template.md for static content changes
-- The project uses `uv` instead of `pip` for dependency management
-- Formula YAML files should be well-documented with clear parameter descriptions and examples
-- Version numbers should follow semantic versioning principles
-- Formulas can reference other named functions - the system will automatically expand them
+- **Always run the linter first**: Use `uv run lint_formulas.py` after creating/modifying YAML files
+- **Always validate YAML files**: Run `uv run generate_readme.py` after creation/modification
+- **Formula files location**: All formula YAML files are in the `formulas/` directory, not the root
+- **No leading equals signs**: Formulas must NOT start with `=` character (enforced by linter)
+- **README.md is auto-generated**: Edit `.readme-template.md` for static content changes
+- **Use `uv` not `pip`**: The project uses `uv` for dependency management
+- **Document formulas well**: Include clear parameter descriptions and examples
+- **Semantic versioning**: Version numbers should follow semantic versioning principles
+- **Formula composition**: Formulas can reference other named functions - the system will automatically expand them
