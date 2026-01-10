@@ -32,6 +32,26 @@ class ValidationError(Exception):
     pass
 
 
+def strip_comments(formula: str) -> str:
+    """
+    Remove // and /* */ style comments from formula text.
+
+    This ensures formulas copied from the README are valid Google Sheets
+    formulas, as Google Sheets does not support comments in formulas.
+
+    Args:
+        formula: Formula text potentially containing comments
+
+    Returns:
+        Formula with comments removed
+    """
+    # Remove /* */ style block comments
+    result = re.sub(r'/\*.*?\*/', '', formula, flags=re.DOTALL)
+    # Remove // style line comments
+    result = re.sub(r'//[^\n]*', '', result)
+    return result
+
+
 class FormulaParser:
     """Parser for Google Sheets formulas using pyparsing."""
 
@@ -413,7 +433,8 @@ def expand_formula(
     if name in expanded_cache:
         return expanded_cache[name]
 
-    formula_text = formula_data['formula'].strip()
+    # Strip comments from formula before processing
+    formula_text = strip_comments(formula_data['formula']).strip()
     named_functions = set(all_formulas.keys())
 
     try:
@@ -566,8 +587,8 @@ def generate_formula_list(formulas: List[Dict[str, Any]]) -> str:
             print(f"  ✓ Expanded {formula['name']}")
         except Exception as e:
             print(f"  Warning: Could not expand {formula['name']}: {e}")
-            # Use original formula if expansion fails
-            expanded_cache[formula['name']] = formula['formula'].strip()
+            # Use original formula if expansion fails (with comments stripped)
+            expanded_cache[formula['name']] = strip_comments(formula['formula']).strip()
 
     # Generate summary list
     lines = ["### Quick Reference\n"]

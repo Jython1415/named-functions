@@ -263,14 +263,14 @@ v1.0.0 Extracts all data rows (excluding header rows) from a data range. This is
 LET(
   header_rows, IF(OR(num_header_rows = "", ISBLANK(num_header_rows)), 1, num_header_rows),
 
-  /* Validate we have enough rows */
+  
   total_rows, ROWS(range),
   _validate, IF(header_rows >= total_rows,
     ERROR("num_header_rows (" & header_rows & ") must be less than total rows (" & total_rows & ")"),
     TRUE
   ),
 
-  /* Use OMITROWS to exclude the header row(s) */
+  
   OMITROWS(range, SEQUENCE(header_rows))
 )
 ```
@@ -695,13 +695,13 @@ v1.0.0 Extracts the header row (first row) from a data range. This is useful for
 LET(
   rows, IF(OR(num_rows = "", ISBLANK(num_rows)), 1, num_rows),
 
-  /* Validate we have enough rows */
+  
   _validate, IF(rows > ROWS(range),
     ERROR("num_rows (" & rows & ") exceeds total rows in range (" & ROWS(range) & ")"),
     TRUE
   ),
 
-  /* Extract the header row(s) */
+  
   IF(rows = 1,
     CHOOSEROWS(range, 1),
     CHOOSEROWS(range, SEQUENCE(rows))
@@ -804,10 +804,10 @@ v1.0.0 Excludes specified columns from a range. This is the negation of CHOOSECO
   result, (LET(
   total_rows, ROWS(transposed),
 
-  /* Convert col_nums to a flat array */
+  
   rows_to_omit, FLATTEN(col_nums),
 
-  /* Convert negative indices to positive (e.g., -1 becomes total_rows) */
+  
   normalized_omit, MAKEARRAY(ROWS(rows_to_omit), COLUMNS(rows_to_omit), LAMBDA(r, c,
     LET(
       idx, INDEX(rows_to_omit, r, c),
@@ -815,19 +815,19 @@ v1.0.0 Excludes specified columns from a range. This is the negation of CHOOSECO
     )
   )),
 
-  /* Create sequence of all row indices */
+  
   all_rows, SEQUENCE(total_rows, 1),
 
-  /* Filter to keep only rows not in the omit list */
+  
   rows_to_keep, FILTER(all_rows, ISNA(MATCH(all_rows, FLATTEN(normalized_omit), 0))),
 
-  /* Validate we have rows left */
+  
   _validate, IF(ROWS(rows_to_keep) = 0,
     ERROR("Cannot omit all rows from transposed"),
     TRUE
   ),
 
-  /* Return the transposed with omitted rows removed */
+  
   CHOOSEROWS(transposed, rows_to_keep)
 )),
   TRANSPOSE(result)
@@ -888,10 +888,10 @@ v1.0.0 Excludes specified rows from a range. This is the negation of CHOOSEROWS 
 LET(
   total_rows, ROWS(range),
 
-  /* Convert row_nums to a flat array */
+  
   rows_to_omit, FLATTEN(row_nums),
 
-  /* Convert negative indices to positive (e.g., -1 becomes total_rows) */
+  
   normalized_omit, MAKEARRAY(ROWS(rows_to_omit), COLUMNS(rows_to_omit), LAMBDA(r, c,
     LET(
       idx, INDEX(rows_to_omit, r, c),
@@ -899,19 +899,19 @@ LET(
     )
   )),
 
-  /* Create sequence of all row indices */
+  
   all_rows, SEQUENCE(total_rows, 1),
 
-  /* Filter to keep only rows not in the omit list */
+  
   rows_to_keep, FILTER(all_rows, ISNA(MATCH(all_rows, FLATTEN(normalized_omit), 0))),
 
-  /* Validate we have rows left */
+  
   _validate, IF(ROWS(rows_to_keep) = 0,
     ERROR("Cannot omit all rows from range"),
     TRUE
   ),
 
-  /* Return the range with omitted rows removed */
+  
   CHOOSEROWS(range, rows_to_keep)
 )
 ```
