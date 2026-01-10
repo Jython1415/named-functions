@@ -11,16 +11,19 @@ named-functions/
 ├── .github/
 │   └── workflows/
 │       └── generate-readme.yml    # GitHub Actions workflow for auto-generating README
+├── formulas/
+│   └── *.yaml                     # Individual formula definitions (e.g., unpivot.yaml)
+├── scripts/
+│   ├── generate_readme.py         # Python script to generate README from YAML files
+│   └── lint_formulas.py           # Python script to lint formula YAML files
 ├── .readme-template.md            # Template for README generation
-├── generate_readme.py             # Python script to generate README from YAML files
 ├── README.md                      # Auto-generated documentation
-├── LICENSE                        # Project license
-└── *.yaml                         # Individual formula definitions (e.g., unpivot.yaml)
+└── LICENSE                        # Project license
 ```
 
 ## Formula YAML Schema
 
-Each formula is defined in a `.yaml` file in the root directory with the following structure:
+Each formula is defined in a `.yaml` file in the `formulas/` directory with the following structure:
 
 ### Required Fields
 
@@ -62,80 +65,26 @@ formula: |
 
 ### Adding a New Formula
 
-1. Create a new `.yaml` file in the root directory (e.g., `myformula.yaml`)
-2. Follow the YAML schema structure above
-3. Ensure all required fields are present and valid
-4. Run `uv run generate_readme.py` locally to:
-   - Validate the YAML file
-   - Update README.md with the new formula
-5. Commit both the `.yaml` file and the updated `README.md`
-6. Push to GitHub
+1. Create a new `.yaml` file in the `formulas/` directory following the schema above
+2. Run `uv run scripts/lint_formulas.py` to check for style violations
+3. Run `uv run scripts/generate_readme.py` to validate and update README
+4. Commit both the `.yaml` file and updated `README.md`
 
-### Testing README Generation
+### CI/CD
 
-Before committing, test the README generation locally:
+The GitHub Actions workflow (`.github/workflows/generate-readme.yml`) automatically runs linting and README generation on push/PR. See the workflow file for details.
 
-```bash
-uv run generate_readme.py
-```
+## Linter
 
-This will:
-- Scan all `.yaml` files in the root directory
-- Validate each file against the schema
-- Generate/update `README.md` from `.readme-template.md`
-- Report any validation errors
+The linter (`scripts/lint_formulas.py`) validates formula YAML files against style rules. It's extensible - new rules can be added easily.
 
-### GitHub Actions Automation
+### Adding a New Lint Rule
 
-The repository uses GitHub Actions to automatically regenerate the README:
+1. Open `scripts/lint_formulas.py`
+2. Create a new subclass of `LintRule` with your validation logic
+3. Add an instance to the `FormulaLinter.rules` list
+4. Test by running `uv run scripts/lint_formulas.py`
 
-- **On push to main**: If any `.yaml` files or related files are modified, the workflow:
-  1. Runs `generate_readme.py`
-  2. Commits and pushes updated `README.md` if changed
-
-- **On pull requests**: If README needs regeneration, the workflow adds a comment to the PR requesting the author to regenerate locally
-
-## Important Files
-
-### generate_readme.py
-
-Python script that:
-- Discovers all `.yaml` files in the root directory
-- Validates them against the formula schema
-- Generates formula list in markdown format
-- Updates README.md by replacing content between `<!-- AUTO-GENERATED CONTENT START -->` and `<!-- AUTO-GENERATED CONTENT END -->` markers
-
-### .readme-template.md
-
-Template file for README generation. Contains:
-- Static content (project description, contributing guide, license)
-- Auto-generation markers where formula list is inserted
-
-### Validation Rules
-
-The script validates:
-- All required fields are present and non-empty
-- Field types are correct (strings, lists, dicts)
-- Parameters have required `name` and `description` fields
-- YAML syntax is valid
-
-## Common Tasks
-
-### Add a new formula
-1. Create `newformula.yaml` following the schema
-2. Run `uv run generate_readme.py` to validate and update README
-3. Commit both files
-
-### Update an existing formula
-1. Edit the `.yaml` file
-2. Increment the version number
-3. Run `uv run generate_readme.py`
-4. Commit changes
-
-### Modify README static content
-1. Edit `.readme-template.md` (not README.md directly)
-2. Run `uv run generate_readme.py` to regenerate README
-3. Commit both files
 
 ## Formula Composition
 
@@ -199,9 +148,9 @@ The composition system uses pyparsing to:
 
 ## Notes for Claude Code
 
-- Always validate YAML files after creation/modification using `uv run generate_readme.py`
-- README.md is auto-generated - edit .readme-template.md for static content changes
-- The project uses `uv` instead of `pip` for dependency management
-- Formula YAML files should be well-documented with clear parameter descriptions and examples
-- Version numbers should follow semantic versioning principles
-- Formulas can reference other named functions - the system will automatically expand them
+- **Always run linter and generator**: Use `uv run scripts/lint_formulas.py` then `uv run scripts/generate_readme.py` after creating/modifying YAML files
+- **Formula files location**: All formula YAML files are in the `formulas/` directory
+- **No leading equals signs**: Formulas must NOT start with `=` character (enforced by linter)
+- **README.md is auto-generated**: Edit `.readme-template.md` for static content changes
+- **Use `uv` not `pip`**: The project uses `uv` for dependency management
+- **Formula composition**: Formulas can reference other named functions - the system will automatically expand them

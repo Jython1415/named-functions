@@ -693,7 +693,7 @@ def generate_readme(template_path: Path, formulas: List[Dict[str, Any]]) -> str:
 
 def main():
     """Main entry point."""
-    root_dir = Path(__file__).parent
+    root_dir = Path(__file__).parent.parent
     template_path = root_dir / '.readme-template.md'
     readme_path = root_dir / 'README.md'
 
