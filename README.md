@@ -22,6 +22,7 @@ A collection of named Excel/Google Sheets formulas using LET and LAMBDA function
 - **[ISBLANKLIKE](#isblanklike)** - Checks if a cell is either truly blank (ISBLANK) or an empty string (""). This is useful for identifying cells that appear empty but may contain empty strings from formulas or data imports. Returns TRUE if the cell is blank-like, FALSE otherwise.
 - **[OMITCOLS](#omitcols)** - Excludes specified columns from a range. This is the negation of CHOOSECOLS - instead of selecting columns to keep, it selects columns to remove.
 - **[OMITROWS](#omitrows)** - Excludes specified rows from a range. This is the negation of CHOOSEROWS - instead of selecting rows to keep, it selects rows to remove.
+- **[SUBSTITUTEMULTI](#substitutemulti)** - Applies multiple SUBSTITUTE operations sequentially using a two-column mapping range. Substitutions are applied in row order, with later substitutions operating on the results of earlier ones. This enables powerful multi-stage text transformations.
 - **[UNPIVOT](#unpivot)** - Transforms wide-format data into long-format (tidy data) by unpivoting specified columns into attribute-value pairs.
 - **[WRAP](#wrap)** - Wraps content with opening and closing delimiters. Useful for generating HTML/XML tags, brackets, or any paired delimiter pattern around text or cell values.
 
@@ -942,6 +943,99 @@ Row numbers to exclude (1-based indices). Can be a single number, an array of nu
 
 ```
 {1, 5, 10}
+```
+
+</details>
+
+<details>
+<summary><strong>SUBSTITUTEMULTI</strong></summary>
+
+### SUBSTITUTEMULTI
+
+**Description**
+
+```
+v1.0.0 Applies multiple SUBSTITUTE operations sequentially using a two-column mapping range. Substitutions are applied in row order, with later substitutions operating on the results of earlier ones. This enables powerful multi-stage text transformations.
+```
+
+**Parameters**
+
+```
+1. text
+2. mappings
+```
+
+**Formula**
+
+```
+LET(
+  num_mappings, ROWS(mappings),
+
+  _validate_mappings, IF(COLUMNS(mappings) <> 2,
+    ERROR("Mappings must be a two-column range"),
+    TRUE
+  ),
+
+  _validate_rows, IF(num_mappings < 1,
+    ERROR("Mappings must have at least 1 row"),
+    TRUE
+  ),
+
+  substitution_func, LAMBDA(accumulated_text, row_num,
+    LET(
+      search_text, INDEX(mappings, row_num, 1),
+      replace_text, INDEX(mappings, row_num, 2),
+
+      IF(OR(search_text = "", ISBLANK(search_text)),
+        accumulated_text,
+        SUBSTITUTE(accumulated_text, search_text, replace_text)
+      )
+    )
+  ),
+
+  IF(OR(ROWS(text) > 1, COLUMNS(text) > 1),
+    MAP(text, LAMBDA(cell,
+      REDUCE(
+        cell,
+        SEQUENCE(num_mappings),
+        substitution_func
+      )
+    )),
+    REDUCE(
+      text,
+      SEQUENCE(num_mappings),
+      substitution_func
+    )
+  )
+)
+```
+
+#### text
+
+**Description:**
+
+```
+Text to perform substitutions on (single cell or range)
+```
+
+**Example:**
+
+```
+A1:A10
+```
+
+#### mappings
+
+**Description:**
+
+```
+Two-column range where column 1 contains text to find and column 2 contains replacement text. Substitutions are applied sequentially in row order.
+```
+
+**Example:**
+
+```
+B1:C5
 ```
 
 </details>

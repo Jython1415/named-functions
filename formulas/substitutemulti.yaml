@@ -1,0 +1,58 @@
+name: SUBSTITUTEMULTI
+version: 1.0.0
+
+description: >
+  Applies multiple SUBSTITUTE operations sequentially using a two-column mapping range.
+  Substitutions are applied in row order, with later substitutions operating on the
+  results of earlier ones. This enables powerful multi-stage text transformations.
+
+parameters:
+  - name: text
+    description: Text to perform substitutions on (single cell or range)
+    example: "A1:A10"
+
+  - name: mappings
+    description: Two-column range where column 1 contains text to find and column 2 contains replacement text. Substitutions are applied sequentially in row order.
+    example: "B1:C5"
+
+formula: |
+  LET(
+    num_mappings, ROWS(mappings),
+
+    _validate_mappings, IF(COLUMNS(mappings) <> 2,
+      ERROR("Mappings must be a two-column range"),
+      TRUE
+    ),
+
+    _validate_rows, IF(num_mappings < 1,
+      ERROR("Mappings must have at least 1 row"),
+      TRUE
+    ),
+
+    substitution_func, LAMBDA(accumulated_text, row_num,
+      LET(
+        search_text, INDEX(mappings, row_num, 1),
+        replace_text, INDEX(mappings, row_num, 2),
+
+        IF(OR(search_text = "", ISBLANK(search_text)),
+          accumulated_text,
+          SUBSTITUTE(accumulated_text, search_text, replace_text)
+        )
+      )
+    ),
+
+    IF(OR(ROWS(text) > 1, COLUMNS(text) > 1),
+      MAP(text, LAMBDA(cell,
+        REDUCE(
+          cell,
+          SEQUENCE(num_mappings),
+          substitution_func
+        )
+      )),
+      REDUCE(
+        text,
+        SEQUENCE(num_mappings),
+        substitution_func
+      )
+    )
+  )
