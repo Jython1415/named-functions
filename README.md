@@ -326,7 +326,7 @@ v1.0.3 Removes empty or incomplete rows and columns from sparse data. Use mode t
 **Formula**
 
 ```
-=LET(
+LET(
   actual_mode, IF(OR(mode="", mode=0), "both", LOWER(TRIM(mode))),
   mode_parts, SPLIT(actual_mode, "-"),
   dimension, INDEX(mode_parts, 1),
