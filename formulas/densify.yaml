@@ -19,7 +19,7 @@ parameters:
     example: "rows-any"
 
 formula: |
-  =LET(
+  LET(
     actual_mode, IF(OR(mode="", mode=0), "both", LOWER(TRIM(mode))),
     mode_parts, SPLIT(actual_mode, "-"),
     dimension, INDEX(mode_parts, 1),
