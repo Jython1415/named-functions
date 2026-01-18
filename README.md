@@ -25,6 +25,7 @@ A collection of named Excel/Google Sheets formulas using LET and LAMBDA function
 - **[ISBLANKLIKE](#isblanklike)** - Checks if a cell is either truly blank (ISBLANK) or an empty string (""). This is useful for identifying cells that appear empty but may contain empty strings from formulas or data imports. Returns TRUE if the cell is blank-like, FALSE otherwise.
 - **[OMITCOLS](#omitcols)** - Excludes specified columns from a range. This is the negation of CHOOSECOLS - instead of selecting columns to keep, it selects columns to remove.
 - **[OMITROWS](#omitrows)** - Excludes specified rows from a range. This is the negation of CHOOSEROWS - instead of selecting rows to keep, it selects rows to remove.
+- **[RANGEREF](#rangeref)** - Converts a range reference to its A1 notation string representation. Returns the range in A1 notation (e.g., "A1:B10") for the given range. For single-cell ranges, returns just the cell reference (e.g., "A1" instead of "A1:A1"). This is useful for generating dynamic range references, creating hyperlinks, or building formulas programmatically.
 - **[SUBSTITUTEMULTI](#substitutemulti)** - Applies multiple SUBSTITUTE operations sequentially using a two-column mapping range. Substitutions are applied in row order, with later substitutions operating on the results of earlier ones. This enables powerful multi-stage text transformations.
 - **[TEXTAFTER](#textafter)** - Returns text that appears after a specified delimiter. Supports forward/backward search, case-sensitive/insensitive matching, and customizable error handling. Replicates Excel's TEXTAFTER function for Google Sheets.
 - **[UNPIVOT](#unpivot)** - Transforms wide-format data into long-format (tidy data) by unpivoting specified columns into attribute-value pairs.
@@ -1131,6 +1132,55 @@ Row numbers to exclude (1-based indices). Can be a single number, an array of nu
 
 ```
 {1, 5, 10}
+```
+
+</details>
+
+<details>
+<summary><strong>RANGEREF</strong></summary>
+
+### RANGEREF
+
+**Description**
+
+```
+v1.0.0 Converts a range reference to its A1 notation string representation. Returns the range in A1 notation (e.g., "A1:B10") for the given range. For single-cell ranges, returns just the cell reference (e.g., "A1" instead of "A1:A1"). This is useful for generating dynamic range references, creating hyperlinks, or building formulas programmatically.
+```
+
+**Parameters**
+
+```
+1. range
+```
+
+**Formula**
+
+```
+LAMBDA(range,
+  LET(
+    topLeftCell, ADDRESS(ROW(range), COLUMN(range), 4),
+    bottomRightCell, ADDRESS(ROW(range) + ROWS(range) - 1, COLUMN(range) + COLUMNS(range) - 1, 4),
+    IF(
+      topLeftCell = bottomRightCell,
+      topLeftCell,
+      topLeftCell & ":" & bottomRightCell
+    )
+  )
+)
+```
+
+#### range
+
+**Description:**
+
+```
+The range to convert to A1 notation
+```
+
+**Example:**
+
+```
+A1:B10
 ```
 
 </details>
