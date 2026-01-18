@@ -1,0 +1,20 @@
+name: NONERRORSTO
+version: 1.0.0
+
+description: >
+  Replaces non-error cells with a specified value while preserving error cells.
+  Accepts either a single value or a range. When given a range, automatically
+  applies the replacement to all cells using MAP. Useful for masking valid data
+  while keeping errors visible for debugging or validation purposes.
+
+parameters:
+  - name: input
+    description: Single value or range to process (non-error cells will be replaced)
+    example: "A1:B10"
+
+  - name: replacement
+    description: Value to use in place of non-errors
+    example: ""
+
+formula: |
+  MAP(input, LAMBDA(v, IF(ISERROR(v), v, replacement)))
