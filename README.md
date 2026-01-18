@@ -13,6 +13,7 @@ A collection of named Excel/Google Sheets formulas using LET and LAMBDA function
 - **[BLANKTOEMPTY](#blanktoempty)** - Converts blank cells to empty strings. Accepts either a single value or a range. When given a range, automatically applies the conversion to all cells using MAP. Useful for ensuring consistent handling of empty values where blank cells need to be represented as empty strings ("").
 - **[BYROW_COMPLETE_ONLY](#byrow_complete_only)** - Applies a row operation only to complete rows (rows with no blank cells). Incomplete rows return a specified fallback value. Useful for processing data while gracefully handling missing values.
 - **[BYROW_NONEMPTY_ONLY](#byrow_nonempty_only)** - Applies a row operation only to non-empty rows (rows with at least one non-blank cell). Completely empty rows return a specified fallback value. Useful for filtering out empty rows during processing.
+- **[CELLREF](#cellref)** - Converts a cell or range reference to its A1 notation string representation. Returns the relative reference (e.g., "N6") for the given cell. This is useful for generating dynamic cell references, creating hyperlinks, or building formulas programmatically.
 - **[DATAROWS](#datarows)** - Extracts all data rows (excluding header rows) from a data range. This is useful for separating data from headers, especially when performing operations that should only apply to data rows.
 - **[DENSIFY](#densify)** - Removes empty or incomplete rows and columns from sparse data. Use mode to control which dimensions to process and how strict to be. Supports data validation (remove incomplete records) and whitespace handling (treat spaces as empty).
 - **[DENSIFYROWS](#densifyrows)** - Removes rows that are entirely blank from sparse data. This is a convenience wrapper around DENSIFY that specifically targets row operations with the "rows" mode.
@@ -239,6 +240,47 @@ LAMBDA function to apply to each non-empty row. Receives a single row as input.
 
 ```
 LAMBDA(row, TEXTJOIN(", ", TRUE, row))
+```
+
+</details>
+
+<details>
+<summary><strong>CELLREF</strong></summary>
+
+### CELLREF
+
+**Description**
+
+```
+v1.0.0 Converts a cell or range reference to its A1 notation string representation. Returns the relative reference (e.g., "N6") for the given cell. This is useful for generating dynamic cell references, creating hyperlinks, or building formulas programmatically.
+```
+
+**Parameters**
+
+```
+1. cell
+```
+
+**Formula**
+
+```
+LAMBDA(cell,
+  ADDRESS(ROW(cell), COLUMN(cell), 4)
+)
+```
+
+#### cell
+
+**Description:**
+
+```
+The cell or range to convert to A1 notation
+```
+
+**Example:**
+
+```
+N6
 ```
 
 </details>
