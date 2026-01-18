@@ -26,7 +26,7 @@ class LintRule:
         self.name = name
         self.description = description
 
-    def check(self, file_path: Path, data: Dict[str, Any]) -> List[str]:
+    def check(self, file_path: Path, data: Dict[str, Any]) -> Tuple[List[str], List[str]]:
         """
         Check the rule against a YAML file.
 
@@ -35,7 +35,7 @@ class LintRule:
             data: Parsed YAML data
 
         Returns:
-            List of error messages (empty if no errors)
+            Tuple of (errors, warnings) - both are lists of messages
         """
         raise NotImplementedError("Subclasses must implement check()")
 
@@ -49,15 +49,16 @@ class NoLeadingEqualsRule(LintRule):
             description="Formula field must not start with '=' character"
         )
 
-    def check(self, file_path: Path, data: Dict[str, Any]) -> List[str]:
+    def check(self, file_path: Path, data: Dict[str, Any]) -> Tuple[List[str], List[str]]:
         errors = []
+        warnings = []
 
         if 'formula' not in data:
-            return errors  # Skip if no formula field (will be caught by schema validation)
+            return errors, warnings  # Skip if no formula field (will be caught by schema validation)
 
         formula = data['formula']
         if not isinstance(formula, str):
-            return errors  # Skip if formula is not a string
+            return errors, warnings  # Skip if formula is not a string
 
         # Check if formula starts with '=' (ignoring leading whitespace)
         stripped = formula.lstrip()
@@ -67,7 +68,7 @@ class NoLeadingEqualsRule(LintRule):
                 f"Remove the leading '=' from the formula field."
             )
 
-        return errors
+        return errors, warnings
 
 
 class NoTopLevelLambdaRule(LintRule):
@@ -79,23 +80,21 @@ class NoTopLevelLambdaRule(LintRule):
             description="Formula field must not start with uninvoked LAMBDA wrapper (Google Sheets adds this automatically)"
         )
 
-    def check(self, file_path: Path, data: Dict[str, Any]) -> List[str]:
+    def check(self, file_path: Path, data: Dict[str, Any]) -> Tuple[List[str], List[str]]:
         errors = []
+        warnings = []
 
         if 'formula' not in data:
-            return errors  # Skip if no formula field
+            return errors, warnings  # Skip if no formula field
 
         formula = data['formula']
         if not isinstance(formula, str):
-            return errors  # Skip if formula is not a string
+            return errors, warnings  # Skip if formula is not a string
 
         # Check if formula starts with LAMBDA (ignoring leading whitespace and trailing whitespace)
         stripped = formula.strip()
         if stripped.upper().startswith('LAMBDA('):
             # Check if it's a self-executing LAMBDA (ends with invocation like )(0) or )(args))
-            # Self-executing LAMBDAs are ALLOWED but NOT NECESSARY for parameterless functions.
-            # Investigation in issue #81 proved that LAMBDA(input, IF(,,))(0) and IF(,,)
-            # behave identically in all contexts. However, we allow them for backwards compatibility.
             # Pattern: LAMBDA(...)(...)
 
             # Count parentheses to find where the LAMBDA definition ends
@@ -130,19 +129,24 @@ class NoTopLevelLambdaRule(LintRule):
             if lambda_end >= 0 and lambda_end < len(stripped) - 1:
                 after_lambda = stripped[lambda_end + 1:].lstrip()
                 if after_lambda.startswith('('):
-                    # This is a self-executing LAMBDA, which is valid
-                    return errors
+                    # This is a self-executing LAMBDA - warn about it
+                    # Investigation in issue #81 proved that LAMBDA(input, IF(,,))(0) and IF(,,)
+                    # behave identically in all contexts. Self-executing LAMBDAs are unnecessary.
+                    warnings.append(
+                        f"{file_path}: Formula uses self-executing LAMBDA pattern. "
+                        f"For parameterless functions, this is unnecessary (see issue #81). "
+                        f"Consider simplifying by removing the LAMBDA wrapper."
+                    )
+                    return errors, warnings
 
-            # This is an uninvoked LAMBDA - flag it
+            # This is an uninvoked LAMBDA - flag it as error
             errors.append(
                 f"{file_path}: Formula starts with uninvoked LAMBDA wrapper. "
                 f"Google Sheets adds the LAMBDA wrapper automatically when you define parameters. "
-                f"Only include the formula body in the YAML file. "
-                f"Note: Self-executing LAMBDAs like 'LAMBDA(...)(...)' are allowed but unnecessary for "
-                f"parameterless functions (see issue #81)."
+                f"Only include the formula body in the YAML file."
             )
 
-        return errors
+        return errors, warnings
 
 
 class FormulaLinter:
@@ -155,7 +159,7 @@ class FormulaLinter:
             # Add more rules here as needed
         ]
 
-    def lint_file(self, file_path: Path) -> List[str]:
+    def lint_file(self, file_path: Path) -> Tuple[List[str], List[str]]:
         """
         Lint a single YAML file.
 
@@ -163,9 +167,10 @@ class FormulaLinter:
             file_path: Path to the YAML file to lint
 
         Returns:
-            List of error messages
+            Tuple of (errors, warnings)
         """
         errors = []
+        warnings = []
 
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
@@ -173,21 +178,22 @@ class FormulaLinter:
 
             if not isinstance(data, dict):
                 errors.append(f"{file_path}: Invalid YAML structure (expected dictionary)")
-                return errors
+                return errors, warnings
 
             # Run all rules
             for rule in self.rules:
-                rule_errors = rule.check(file_path, data)
+                rule_errors, rule_warnings = rule.check(file_path, data)
                 errors.extend(rule_errors)
+                warnings.extend(rule_warnings)
 
         except yaml.YAMLError as e:
             errors.append(f"{file_path}: YAML parsing error: {e}")
         except Exception as e:
             errors.append(f"{file_path}: Unexpected error: {e}")
 
-        return errors
+        return errors, warnings
 
-    def lint_all(self, directory: Path = None) -> Tuple[int, int, List[str]]:
+    def lint_all(self, directory: Path = None) -> Tuple[int, int, int, List[str], List[str]]:
         """
         Lint all YAML files in the formulas directory.
 
@@ -195,7 +201,7 @@ class FormulaLinter:
             directory: Directory to search for YAML files (defaults to formulas/ subdirectory)
 
         Returns:
-            Tuple of (files_checked, error_count, error_messages)
+            Tuple of (files_checked, error_count, warning_count, errors, warnings)
         """
         if directory is None:
             directory = Path.cwd() / 'formulas'
@@ -204,14 +210,16 @@ class FormulaLinter:
         yaml_files = sorted(directory.glob('*.yaml'))
 
         all_errors = []
+        all_warnings = []
         files_checked = 0
 
         for yaml_file in yaml_files:
             files_checked += 1
-            errors = self.lint_file(yaml_file)
+            errors, warnings = self.lint_file(yaml_file)
             all_errors.extend(errors)
+            all_warnings.extend(warnings)
 
-        return files_checked, len(all_errors), all_errors
+        return files_checked, len(all_errors), len(all_warnings), all_errors, all_warnings
 
 
 def main():
@@ -228,11 +236,22 @@ def main():
     print()
 
     # Run linter
-    files_checked, error_count, errors = linter.lint_all()
+    files_checked, error_count, warning_count, errors, warnings = linter.lint_all()
+
+    # Report warnings
+    if warning_count > 0:
+        print(f"⚠️  Found {warning_count} warning(s):")
+        print()
+        for warning in warnings:
+            print(f"  {warning}")
+        print()
 
     # Report results
     if error_count == 0:
-        print(f"✅ All {files_checked} file(s) passed lint checks!")
+        if warning_count > 0:
+            print(f"✅ All {files_checked} file(s) passed lint checks (with warnings above)")
+        else:
+            print(f"✅ All {files_checked} file(s) passed lint checks!")
         return 0
     else:
         print(f"❌ Found {error_count} error(s) in {files_checked} file(s):")
