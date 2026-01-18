@@ -1,0 +1,18 @@
+name: CELLREF
+version: 1.0.0
+
+description: >
+  Converts a cell or range reference to its A1 notation string representation.
+  Returns the relative reference (e.g., "N6") for the given cell. This is useful
+  for generating dynamic cell references, creating hyperlinks, or building
+  formulas programmatically.
+
+parameters:
+  - name: cell
+    description: The cell or range to convert to A1 notation
+    example: "N6"
+
+formula: |
+  LAMBDA(cell,
+    ADDRESS(ROW(cell), COLUMN(cell), 4)
+  )
