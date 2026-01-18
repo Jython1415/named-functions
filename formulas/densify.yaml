@@ -1,10 +1,12 @@
 name: DENSIFY
-version: 1.0.3
+version: 1.0.6
 
 description: >
   Removes empty or incomplete rows and columns from sparse data. Use mode to control
   which dimensions to process and how strict to be. Supports data validation (remove
-  incomplete records) and whitespace handling (treat spaces as empty).
+  incomplete records) and whitespace handling (treat spaces as empty). Preserves
+  all error types (#N/A, #DIV/0!, etc.) - rows/columns containing errors are kept
+  and error values remain intact. Returns BLANK() when all rows/columns are filtered out.
 
 parameters:
   - name: range
@@ -36,10 +38,11 @@ formula: |
         rows_filtered, IF(should_remove_rows,
           LET(
             threshold, IF(has_any, COLUMNS(range), 1),
-            IF(has_strict,
-              IFNA(FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((LEN(TRIM(r)) > 0) * 1) >= threshold))), BLANK()),
-              IFNA(FILTER(range, BYROW(range, LAMBDA(r, COUNTA(r) >= threshold))), BLANK())
-            )
+            result, IF(has_strict,
+              FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((IFERROR(LEN(TRIM(r)) > 0, TRUE)) * 1) >= threshold)),
+              FILTER(range, BYROW(range, LAMBDA(r, COUNTA(r) >= threshold)))
+            ),
+            IF(ISNA(ROWS(result)), BLANK(), result)
           ),
           range
         ),
@@ -48,12 +51,11 @@ formula: |
           LET(
             transposed, TRANSPOSE(rows_filtered),
             threshold, IF(has_any, ROWS(rows_filtered), 1),
-            TRANSPOSE(
-              IF(has_strict,
-                IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((LEN(TRIM(c)) > 0) * 1) >= threshold))), BLANK()),
-                IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, COUNTA(c) >= threshold))), BLANK())
-              )
-            )
+            result, IF(has_strict,
+              FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((IFERROR(LEN(TRIM(c)) > 0, TRUE)) * 1) >= threshold)),
+              FILTER(transposed, BYROW(transposed, LAMBDA(c, COUNTA(c) >= threshold)))
+            ),
+            IF(ISNA(ROWS(result)), BLANK(), TRANSPOSE(result))
           ),
           rows_filtered
         ),
