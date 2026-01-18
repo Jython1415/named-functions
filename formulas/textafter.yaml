@@ -1,0 +1,82 @@
+name: TEXTAFTER
+version: 1.0.0
+
+description: >
+  Returns text that appears after a specified delimiter. Supports forward/backward
+  search, case-sensitive/insensitive matching, and customizable error handling.
+  Replicates Excel's TEXTAFTER function for Google Sheets.
+
+parameters:
+  - name: text
+    description: The source text to search within
+    example: '"john.doe@example.com"'
+
+  - name: delimiter
+    description: The text marking where extraction begins (extracts text after this)
+    example: '"@"'
+
+  - name: instance_num
+    description: Which occurrence to use. Positive counts from left (1=first), negative from right (-1=last). Cannot be 0.
+    example: 1
+
+  - name: match_mode
+    description: Case sensitivity. 0 for case-sensitive (default), 1 for case-insensitive
+    example: 0
+
+  - name: match_end
+    description: End-of-text handling. 0 requires exact match (default), 1 treats end of text as delimiter
+    example: 0
+
+  - name: if_not_found
+    description: Value to return if delimiter not found. Use NA() for #N/A error (Excel default)
+    example: 'NA()'
+
+formula: |
+  LAMBDA(text, delimiter, instance_num, match_mode, match_end, if_not_found,
+    LET(
+      // Validate instance_num is not 0
+      IF(instance_num = 0, NA(),
+        // Special case: empty delimiter
+        IF(delimiter = "",
+          IF(instance_num > 0, text, ""),
+          LET(
+            // Handle case sensitivity for search
+            search_text, IF(match_mode = 1, UPPER(text), text),
+            search_delim, IF(match_mode = 1, UPPER(delimiter), delimiter),
+
+            // Count total occurrences of delimiter
+            total_count, (LEN(search_text) - LEN(SUBSTITUTE(search_text, search_delim, ""))) / LEN(search_delim),
+
+            // Convert negative instance_num to positive (count from right)
+            positive_inst, IF(instance_num < 0, total_count + instance_num + 1, instance_num),
+
+            // Check if the requested instance exists
+            found, positive_inst > 0 AND positive_inst <= total_count,
+
+            IF(found,
+              LET(
+                // Find position of nth delimiter using SUBSTITUTE trick
+                // Replace only the nth occurrence with a unique marker
+                marker, "§§§TEXTAFTER§§§",
+                text_with_marker, SUBSTITUTE(search_text, search_delim, marker, positive_inst),
+                delim_pos, FIND(marker, text_with_marker),
+
+                // Position after the delimiter in original text
+                after_pos, delim_pos + LEN(delimiter),
+
+                // Extract and return text after delimiter
+                MID(text, after_pos, LEN(text))
+              ),
+              // Delimiter not found - handle based on match_end
+              IF(match_end = 1,
+                // With match_end=1, treat end of text as delimiter
+                IF(instance_num > 0, "", text),
+                // Return custom error value
+                if_not_found
+              )
+            )
+          )
+        )
+      )
+    )
+  )

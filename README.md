@@ -24,6 +24,7 @@ A collection of named Excel/Google Sheets formulas using LET and LAMBDA function
 - **[OMITCOLS](#omitcols)** - Excludes specified columns from a range. This is the negation of CHOOSECOLS - instead of selecting columns to keep, it selects columns to remove.
 - **[OMITROWS](#omitrows)** - Excludes specified rows from a range. This is the negation of CHOOSEROWS - instead of selecting rows to keep, it selects rows to remove.
 - **[SUBSTITUTEMULTI](#substitutemulti)** - Applies multiple SUBSTITUTE operations sequentially using a two-column mapping range. Substitutions are applied in row order, with later substitutions operating on the results of earlier ones. This enables powerful multi-stage text transformations.
+- **[TEXTAFTER](#textafter)** - Returns text that appears after a specified delimiter. Supports forward/backward search, case-sensitive/insensitive matching, and customizable error handling. Replicates Excel's TEXTAFTER function for Google Sheets.
 - **[UNPIVOT](#unpivot)** - Transforms wide-format data into long-format (tidy data) by unpivoting specified columns into attribute-value pairs.
 - **[WRAP](#wrap)** - Wraps content with opening and closing delimiters. Useful for generating HTML/XML tags, brackets, or any paired delimiter pattern around text or cell values.
 
@@ -1139,6 +1140,155 @@ Two-column range where column 1 contains text to find and column 2 contains repl
 
 ```
 B1:C5
+```
+
+</details>
+
+<details>
+<summary><strong>TEXTAFTER</strong></summary>
+
+### TEXTAFTER
+
+**Description**
+
+```
+v1.0.0 Returns text that appears after a specified delimiter. Supports forward/backward search, case-sensitive/insensitive matching, and customizable error handling. Replicates Excel's TEXTAFTER function for Google Sheets.
+```
+
+**Parameters**
+
+```
+1. text
+2. delimiter
+3. instance_num
+4. match_mode
+5. match_end
+6. if_not_found
+```
+
+**Formula**
+
+```
+LAMBDA(text, delimiter, instance_num, match_mode, match_end, if_not_found,
+  LET(
+    
+    IF(instance_num = 0, NA(),
+      
+      IF(delimiter = "",
+        IF(instance_num > 0, text, ""),
+        LET(
+          
+          search_text, IF(match_mode = 1, UPPER(text), text),
+          search_delim, IF(match_mode = 1, UPPER(delimiter), delimiter),
+
+          
+          total_count, (LEN(search_text) - LEN(SUBSTITUTE(search_text, search_delim, ""))) / LEN(search_delim),
+
+          
+          positive_inst, IF(instance_num < 0, total_count + instance_num + 1, instance_num),
+
+          
+          found, positive_inst > 0 AND positive_inst <= total_count,
+
+          IF(found,
+            LET(
+              
+              
+              marker, "§§§TEXTAFTER§§§",
+              text_with_marker, SUBSTITUTE(search_text, search_delim, marker, positive_inst),
+              delim_pos, FIND(marker, text_with_marker),
+
+              
+              after_pos, delim_pos + LEN(delimiter),
+
+              
+              MID(text, after_pos, LEN(text))
+            ),
+            
+            IF(match_end = 1,
+              
+              IF(instance_num > 0, "", text),
+              
+              if_not_found
+            )
+          )
+        )
+      )
+    )
+  )
+)
+```
+
+#### text
+
+**Description:**
+
+```
+The source text to search within
+```
+
+**Example:**
+
+```
+"john.doe@example.com"
+```
+
+#### delimiter
+
+**Description:**
+
+```
+The text marking where extraction begins (extracts text after this)
+```
+
+**Example:**
+
+```
+"@"
+```
+
+#### instance_num
+
+**Description:**
+
+```
+Which occurrence to use. Positive counts from left (1=first), negative from right (-1=last). Cannot be 0.
+```
+
+**Example:**
+
+```
+1
+```
+
+#### match_mode
+
+**Description:**
+
+```
+Case sensitivity. 0 for case-sensitive (default), 1 for case-insensitive
+```
+
+#### match_end
+
+**Description:**
+
+```
+End-of-text handling. 0 requires exact match (default), 1 treats end of text as delimiter
+```
+
+#### if_not_found
+
+**Description:**
+
+```
+Value to return if delimiter not found. Use NA() for
+```
+
+**Example:**
+
+```
+NA()
 ```
 
 </details>
