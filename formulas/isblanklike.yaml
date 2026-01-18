@@ -13,4 +13,4 @@ parameters:
     example: "A1"
 
 formula: |
-  LAMBDA(cell, OR(ISBLANK(cell), cell = ""))
+  OR(ISBLANK(cell), cell = "")

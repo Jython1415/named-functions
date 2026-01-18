@@ -265,9 +265,7 @@ v1.0.0 Converts a cell or range reference to its A1 notation string representati
 **Formula**
 
 ```
-LAMBDA(cell,
-  ADDRESS(ROW(cell), COLUMN(cell), 4)
-)
+ADDRESS(ROW(cell), COLUMN(cell), 4)
 ```
 
 #### cell
@@ -588,9 +586,7 @@ v1.0.0 Displays a custom error message as an #N/A error with a configurable tool
 **Formula**
 
 ```
-LAMBDA(message,
-  XLOOKUP(message, IF(FALSE, {1}), IF(FALSE, {1}))
-)
+XLOOKUP(message, IF(FALSE, {1}), IF(FALSE, {1}))
 ```
 
 #### message
@@ -949,7 +945,7 @@ v1.0.0 Checks if a cell is either truly blank (ISBLANK) or an empty string ("").
 **Formula**
 
 ```
-LAMBDA(cell, OR(ISBLANK(cell), cell = ""))
+OR(ISBLANK(cell), cell = "")
 ```
 
 #### cell
@@ -1156,15 +1152,13 @@ v1.0.0 Converts a range reference to its A1 notation string representation. Retu
 **Formula**
 
 ```
-LAMBDA(range,
-  LET(
-    topLeftCell, ADDRESS(ROW(range), COLUMN(range), 4),
-    bottomRightCell, ADDRESS(ROW(range) + ROWS(range) - 1, COLUMN(range) + COLUMNS(range) - 1, 4),
-    IF(
-      topLeftCell = bottomRightCell,
-      topLeftCell,
-      topLeftCell & ":" & bottomRightCell
-    )
+LET(
+  topLeftCell, ADDRESS(ROW(range), COLUMN(range), 4),
+  bottomRightCell, ADDRESS(ROW(range) + ROWS(range) - 1, COLUMN(range) + COLUMNS(range) - 1, 4),
+  IF(
+    topLeftCell = bottomRightCell,
+    topLeftCell,
+    topLeftCell & ":" & bottomRightCell
   )
 )
 ```
@@ -1303,48 +1297,46 @@ v1.0.0 Returns text that appears after a specified delimiter. Supports forward/b
 **Formula**
 
 ```
-LAMBDA(text, delimiter, instance_num, match_mode, match_end, if_not_found,
-  LET(
+LET(
+  
+  IF(instance_num = 0, NA(),
     
-    IF(instance_num = 0, NA(),
-      
-      IF(delimiter = "",
-        IF(instance_num > 0, text, ""),
-        LET(
-          
-          search_text, IF(match_mode = 1, UPPER(text), text),
-          search_delim, IF(match_mode = 1, UPPER(delimiter), delimiter),
+    IF(delimiter = "",
+      IF(instance_num > 0, text, ""),
+      LET(
+        
+        search_text, IF(match_mode = 1, UPPER(text), text),
+        search_delim, IF(match_mode = 1, UPPER(delimiter), delimiter),
 
-          
-          total_count, (LEN(search_text) - LEN(SUBSTITUTE(search_text, search_delim, ""))) / LEN(search_delim),
+        
+        total_count, (LEN(search_text) - LEN(SUBSTITUTE(search_text, search_delim, ""))) / LEN(search_delim),
 
-          
-          positive_inst, IF(instance_num < 0, total_count + instance_num + 1, instance_num),
+        
+        positive_inst, IF(instance_num < 0, total_count + instance_num + 1, instance_num),
 
-          
-          found, positive_inst > 0 AND positive_inst <= total_count,
+        
+        found, positive_inst > 0 AND positive_inst <= total_count,
 
-          IF(found,
-            LET(
-              
-              
-              marker, "§§§TEXTAFTER§§§",
-              text_with_marker, SUBSTITUTE(search_text, search_delim, marker, positive_inst),
-              delim_pos, FIND(marker, text_with_marker),
-
-              
-              after_pos, delim_pos + LEN(delimiter),
-
-              
-              MID(text, after_pos, LEN(text))
-            ),
+        IF(found,
+          LET(
             
-            IF(match_end = 1,
-              
-              IF(instance_num > 0, "", text),
-              
-              if_not_found
-            )
+            
+            marker, "§§§TEXTAFTER§§§",
+            text_with_marker, SUBSTITUTE(search_text, search_delim, marker, positive_inst),
+            delim_pos, FIND(marker, text_with_marker),
+
+            
+            after_pos, delim_pos + LEN(delimiter),
+
+            
+            MID(text, after_pos, LEN(text))
+          ),
+          
+          IF(match_end = 1,
+            
+            IF(instance_num > 0, "", text),
+            
+            if_not_found
           )
         )
       )
@@ -1642,9 +1634,7 @@ v1.0.0 Wraps content with opening and closing delimiters. Useful for generating 
 **Formula**
 
 ```
-LAMBDA(delimiter, contents,
-  "<" & delimiter & ">" & contents & "</" & delimiter & ">"
-)
+"<" & delimiter & ">" & contents & "</" & delimiter & ">"
 ```
 
 #### delimiter

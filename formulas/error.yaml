@@ -12,6 +12,4 @@ parameters:
     example: '"Value must be between 1 and 100"'
 
 formula: |
-  LAMBDA(message,
-    XLOOKUP(message, IF(FALSE, {1}), IF(FALSE, {1}))
-  )
+  XLOOKUP(message, IF(FALSE, {1}), IF(FALSE, {1}))
