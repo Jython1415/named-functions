@@ -377,7 +377,7 @@ v1.0.6 Removes empty or incomplete rows and columns from sparse data. Use mode t
 **Formula**
 
 ```
-LET(
+=LET(
   actual_mode, IF(OR(mode="", mode=0), "both", LOWER(TRIM(mode))),
   mode_parts, SPLIT(actual_mode, "-"),
   dimension, INDEX(mode_parts, 1),
@@ -398,7 +398,7 @@ LET(
             FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((IFERROR(LEN(TRIM(r)) > 0, TRUE)) * 1) >= threshold))),
             FILTER(range, BYROW(range, LAMBDA(r, COUNTA(r) >= threshold)))
           ),
-          IF(ISNA(ROWS(result)), BLANK(), result)
+          IF(ISNA(ROWS(result)), (IF(,,)), result)
         ),
         range
       ),
@@ -411,7 +411,7 @@ LET(
             FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((IFERROR(LEN(TRIM(c)) > 0, TRUE)) * 1) >= threshold))),
             FILTER(transposed, BYROW(transposed, LAMBDA(c, COUNTA(c) >= threshold)))
           ),
-          IF(ISNA(ROWS(result)), BLANK(), TRANSPOSE(result))
+          IF(ISNA(ROWS(result)), (IF(,,)), TRANSPOSE(result))
         ),
         rows_filtered
       ),
@@ -472,49 +472,7 @@ v2.0.0 Removes rows that are entirely blank from sparse data. This is a convenie
 **Formula**
 
 ```
-=LET(
-  actual_mode, IF(OR("rows"="", "rows"=0), "both", LOWER(TRIM("rows"))),
-  mode_parts, SPLIT(actual_mode, "-"),
-  dimension, INDEX(mode_parts, 1),
-  has_any, IFERROR(FIND("any", actual_mode) > 0, FALSE),
-  has_strict, IFERROR(FIND("strict", actual_mode) > 0, FALSE),
-  valid_dimension, OR(dimension = "both", dimension = "rows", dimension = "cols"),
-
-  IF(NOT(valid_dimension),
-    NA(),
-    LET(
-      should_remove_rows, OR(dimension = "both", dimension = "rows"),
-      should_remove_cols, OR(dimension = "both", dimension = "cols"),
-
-      rows_filtered, IF(should_remove_rows,
-        LET(
-          threshold, IF(has_any, COLUMNS(range), 1),
-          result, IF(has_strict,
-            FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((IFERROR(LEN(TRIM(r)) > 0, TRUE)) * 1) >= threshold))),
-            FILTER(range, BYROW(range, LAMBDA(r, COUNTA(r) >= threshold)))
-          ),
-          IF(ISNA(ROWS(result)), BLANK(), result)
-        ),
-        range
-      ),
-
-      final, IF(should_remove_cols,
-        LET(
-          transposed, TRANSPOSE(rows_filtered),
-          threshold, IF(has_any, ROWS(rows_filtered), 1),
-          result, IF(has_strict,
-            FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((IFERROR(LEN(TRIM(c)) > 0, TRUE)) * 1) >= threshold))),
-            FILTER(transposed, BYROW(transposed, LAMBDA(c, COUNTA(c) >= threshold)))
-          ),
-          IF(ISNA(ROWS(result)), BLANK(), TRANSPOSE(result))
-        ),
-        rows_filtered
-      ),
-
-      final
-    )
-  )
-)
+DENSIFY(range, "rows")
 ```
 
 #### range
@@ -553,7 +511,7 @@ v1.1.0 Converts empty strings to blank cells. Accepts either a single value or a
 **Formula**
 
 ```
-MAP(input, LAMBDA(v, IF(v = "", BLANK(), v)))
+MAP(input, LAMBDA(v, IF(v = "", (IF(,,)), v)))
 ```
 
 #### input
@@ -632,7 +590,7 @@ v1.0.0 Filters rows and columns based on error status. Use mode to control which
 **Formula**
 
 ```
-LET(
+=LET(
   actual_mode, IF(OR(mode="", mode=0), "both", LOWER(TRIM(mode))),
   mode_parts, SPLIT(actual_mode, "-"),
   dimension, INDEX(mode_parts, 1),
@@ -650,10 +608,10 @@ LET(
         LET(
           num_cols, COLUMNS(range),
           IF(has_any,
-            IFNA(FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((ISERROR(r)) * 1) > 0))), BLANK()),
+            IFNA(FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((ISERROR(r)) * 1) > 0))), (IF(,,))),
             IF(has_all,
-              IFNA(FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((ISERROR(r)) * 1) = num_cols))), BLANK()),
-              IFNA(FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((ISERROR(r)) * 1) = 0))), BLANK())
+              IFNA(FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((ISERROR(r)) * 1) = num_cols))), (IF(,,))),
+              IFNA(FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((ISERROR(r)) * 1) = 0))), (IF(,,)))
             )
           )
         ),
@@ -666,10 +624,10 @@ LET(
           num_rows, ROWS(rows_filtered),
           TRANSPOSE(
             IF(has_any,
-              IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((ISERROR(c)) * 1) > 0))), BLANK()),
+              IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((ISERROR(c)) * 1) > 0))), (IF(,,))),
               IF(has_all,
-                IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((ISERROR(c)) * 1) = num_rows))), BLANK()),
-                IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((ISERROR(c)) * 1) = 0))), BLANK())
+                IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((ISERROR(c)) * 1) = num_rows))), (IF(,,))),
+                IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((ISERROR(c)) * 1) = 0))), (IF(,,)))
               )
             )
           )
@@ -1221,37 +1179,9 @@ v1.0.0 Excludes specified columns from a range. This is the negation of CHOOSECO
 **Formula**
 
 ```
-=LET(
+LET(
   transposed, TRANSPOSE(range),
-  result, (LET(
-  total_rows, ROWS(transposed),
-
-  
-  rows_to_omit, FLATTEN(col_nums),
-
-  
-  normalized_omit, MAKEARRAY(ROWS(rows_to_omit), COLUMNS(rows_to_omit), LAMBDA(r, c,
-    LET(
-      idx, INDEX(rows_to_omit, r, c),
-      IF(idx < 0, total_rows + idx + 1, idx)
-    )
-  )),
-
-  
-  all_rows, SEQUENCE(total_rows, 1),
-
-  
-  rows_to_keep, FILTER(all_rows, ISNA(MATCH(all_rows, FLATTEN(normalized_omit), 0))),
-
-  
-  _validate, IF(ROWS(rows_to_keep) = 0,
-    ERROR("Cannot omit all rows from transposed"),
-    TRUE
-  ),
-
-  
-  CHOOSEROWS(transposed, rows_to_keep)
-)),
+  result, OMITROWS(transposed, col_nums),
   TRANSPOSE(result)
 )
 ```
