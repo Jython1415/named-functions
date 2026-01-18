@@ -17,7 +17,7 @@ A collection of named Excel/Google Sheets formulas using LET and LAMBDA function
 - **[DATAROWS](#datarows)** - Extracts all data rows (excluding header rows) from a data range. This is useful for separating data from headers, especially when performing operations that should only apply to data rows.
 - **[DENSIFY](#densify)** - Removes empty or incomplete rows and columns from sparse data. Use mode to control which dimensions to process and how strict to be. Supports data validation (remove incomplete records) and whitespace handling (treat spaces as empty).
 - **[DENSIFYROWS](#densifyrows)** - Removes rows that are entirely blank from sparse data. This is a convenience wrapper around DENSIFY that specifically targets row operations with the "rows" mode.
-- **[DIAGNOSTIC_BLANK](#diagnostic_blank)** - Diagnostic formula to test the behavior differences between self-executing LAMBDA pattern (LAMBDA(input, IF(,,))(0)) and direct formula (IF(,,)) for parameterless functions. Returns a structured report showing behavior in various contexts. This is a temporary diagnostic formula for issue #81 investigation.
+- **[DIAGNOSTIC_BLANK](#diagnostic_blank)** - Diagnostic formula to test behavior differences between self-executing LAMBDA pattern (LAMBDA(input, IF(,,))(0)) and direct formula (IF(,,)) for parameterless functions. Tests both patterns simultaneously and displays side-by-side comparison. Call with no parameters: =DIAGNOSTIC_BLANK() This is a temporary diagnostic formula for issue #81 investigation.
 - **[EMPTYTOBLANK](#emptytoblank)** - Converts empty strings to blank cells. Accepts either a single value or a range. When given a range, automatically applies the conversion to all cells using MAP. Useful for cleaning data where empty strings should be represented as true blanks.
 - **[ERROR](#error)** - Displays a custom error message as an #N/A error with a configurable tooltip. Uses an empty array trick to ensure the error always triggers, regardless of cell contents. Useful for validation and user-friendly error reporting.
 - **[ERRORFILTER](#errorfilter)** - Filters rows and columns based on error status. Use mode to control which dimensions to process and which error conditions to filter for. Useful for data validation, debugging, and cleaning error-prone data.
@@ -536,13 +536,7 @@ A1:Z100
 **Description**
 
 ```
-v1.0.0 Diagnostic formula to test the behavior differences between self-executing LAMBDA pattern (LAMBDA(input, IF(,,))(0)) and direct formula (IF(,,)) for parameterless functions. Returns a structured report showing behavior in various contexts. This is a temporary diagnostic formula for issue #81 investigation.
-```
-
-**Parameters**
-
-```
-1. test_pattern
+v2.0.0 Diagnostic formula to test behavior differences between self-executing LAMBDA pattern (LAMBDA(input, IF(,,))(0)) and direct formula (IF(,,)) for parameterless functions. Tests both patterns simultaneously and displays side-by-side comparison. Call with no parameters: =DIAGNOSTIC_BLANK() This is a temporary diagnostic formula for issue #81 investigation.
 ```
 
 **Formula**
@@ -550,80 +544,76 @@ v1.0.0 Diagnostic formula to test the behavior differences between self-executin
 ```
 LET(
   
-  blank_value, IF(test_pattern = "lambda", LAMBDA(input, IF(,,))(0), IF(,,)),
+  blank_lambda, LAMBDA(input, IF(,,))(0),
+  blank_direct, IF(,,),
 
   
-  test1_result, ISBLANK(blank_value),
-  test1_label, "ISBLANK check",
+  test1_lambda, ISBLANK(blank_lambda),
+  test1_direct, ISBLANK(blank_direct),
+  test1_match, test1_lambda = test1_direct,
 
   
-  test2_result, IFERROR(TYPE(blank_value), "ERROR"),
-  test2_label, "TYPE check",
+  test2_lambda, IFERROR(TYPE(blank_lambda), "ERROR"),
+  test2_direct, IFERROR(TYPE(blank_direct), "ERROR"),
+  test2_match, test2_lambda = test2_direct,
 
   
-  test3_result, blank_value = "",
-  test3_label, "Equals empty string",
+  test3_lambda, blank_lambda = "",
+  test3_direct, blank_direct = "",
+  test3_match, test3_lambda = test3_direct,
 
   
-  test4_result, ISBLANK(IF(TRUE, blank_value, "fallback")),
-  test4_label, "IF(TRUE, blank, fallback)",
+  test4_lambda, ISBLANK(IF(TRUE, blank_lambda, "fallback")),
+  test4_direct, ISBLANK(IF(TRUE, blank_direct, "fallback")),
+  test4_match, test4_lambda = test4_direct,
 
   
-  test5_result, ISBLANK(IF(FALSE, "fallback", blank_value)),
-  test5_label, "IF(FALSE, fallback, blank)",
+  test5_lambda, ISBLANK(IF(FALSE, "fallback", blank_lambda)),
+  test5_direct, ISBLANK(IF(FALSE, "fallback", blank_direct)),
+  test5_match, test5_lambda = test5_direct,
 
   
-  test6_result, IFERROR(COUNTA(MAP({1;2;3}, LAMBDA(x, blank_value))), "ERROR"),
-  test6_label, "MAP blank count",
+  test6_lambda, IFERROR(COUNTA(MAP({1;2;3}, LAMBDA(x, blank_lambda))), "ERROR"),
+  test6_direct, IFERROR(COUNTA(MAP({1;2;3}, LAMBDA(x, blank_direct))), "ERROR"),
+  test6_match, test6_lambda = test6_direct,
 
   
-  test7_result, IFERROR(ROWS(FILTER({1;2;3}, MAP({1;2;3}, LAMBDA(x, blank_value)) <> blank_value)), "ERROR"),
-  test7_label, "FILTER with blank criterion",
+  test7_lambda, "prefix" & blank_lambda & "suffix",
+  test7_direct, "prefix" & blank_direct & "suffix",
+  test7_match, test7_lambda = test7_direct,
 
   
-  test8_result, "prefix" & blank_value & "suffix",
-  test8_label, "String concatenation",
+  test8_lambda, IFERROR(LEN(blank_lambda), "ERROR"),
+  test8_direct, IFERROR(LEN(blank_direct), "ERROR"),
+  test8_match, test8_lambda = test8_direct,
 
   
-  test9_result, IFERROR(LEN(blank_value), "ERROR"),
-  test9_label, "LEN check",
+  test9_lambda, IFERROR(COUNTA(ARRAYFORMULA(blank_lambda)), "ERROR"),
+  test9_direct, IFERROR(COUNTA(ARRAYFORMULA(blank_direct)), "ERROR"),
+  test9_match, test9_lambda = test9_direct,
 
   
-  test10_result, IFERROR(COUNTA(ARRAYFORMULA(blank_value)), "ERROR"),
-  test10_label, "ARRAYFORMULA wrapping",
+  test10_result, blank_lambda = blank_direct,
+  test10_match, TRUE,
 
   
-  header, {"Test", "Pattern: " & test_pattern},
+  header, {"Test", "LAMBDA Pattern", "Direct Pattern", "Match?"},
   results, {
-    {test1_label, test1_result};
-    {test2_label, test2_result};
-    {test3_label, test3_result};
-    {test4_label, test4_result};
-    {test5_label, test5_result};
-    {test6_label, test6_result};
-    {test7_label, test7_result};
-    {test8_label, test8_result};
-    {test9_label, test9_result};
-    {test10_label, test10_result}
+    {"1. ISBLANK check", test1_lambda, test1_direct, test1_match};
+    {"2. TYPE check", test2_lambda, test2_direct, test2_match};
+    {"3. Equals empty string", test3_lambda, test3_direct, test3_match};
+    {"4. IF(TRUE, blank, ...)", test4_lambda, test4_direct, test4_match};
+    {"5. IF(FALSE, ..., blank)", test5_lambda, test5_direct, test5_match};
+    {"6. MAP blank count", test6_lambda, test6_direct, test6_match};
+    {"7. String concat", test7_lambda, test7_direct, test7_match};
+    {"8. LEN check", test8_lambda, test8_direct, test8_match};
+    {"9. ARRAYFORMULA count", test9_lambda, test9_direct, test9_match};
+    {"10. Direct equality", test10_result, test10_result, test10_match}
   },
 
   
   {header; results}
 )
-```
-
-#### test_pattern
-
-**Description:**
-
-```
-Which pattern to test - "lambda" for LAMBDA(input, IF(,,))(0), "direct" for IF(,,)
-```
-
-**Example:**
-
-```
-"lambda"
 ```
 
 </details>
