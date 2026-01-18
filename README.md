@@ -17,6 +17,7 @@ A collection of named Excel/Google Sheets formulas using LET and LAMBDA function
 - **[DENSIFY](#densify)** - Removes empty or incomplete rows and columns from sparse data. Use mode to control which dimensions to process and how strict to be. Supports data validation (remove incomplete records) and whitespace handling (treat spaces as empty).
 - **[DENSIFYROWS](#densifyrows)** - Removes rows that are entirely blank from sparse data. This is a convenience wrapper around DENSIFY that specifically targets row operations with the "rows" mode.
 - **[EMPTYTOBLANK](#emptytoblank)** - Converts empty strings to blank cells. Accepts either a single value or a range. When given a range, automatically applies the conversion to all cells using MAP. Useful for cleaning data where empty strings should be represented as true blanks.
+- **[ERRORFILTER](#errorfilter)** - Filters rows and columns based on error status. Use mode to control which dimensions to process and which error conditions to filter for. Useful for data validation, debugging, and cleaning error-prone data.
 - **[GROUPBY](#groupby)** - Groups data by one or more columns and applies custom aggregation logic via LAMBDA functions, implementing SQL-like GROUP BY functionality. Does not handle headers - provide data without header row.
 - **[HEADERS](#headers)** - Extracts the header row (first row) from a data range. This is useful for separating headers from data, especially when working with structured data.
 - **[ISBLANKLIKE](#isblanklike)** - Checks if a cell is either truly blank (ISBLANK) or an empty string (""). This is useful for identifying cells that appear empty but may contain empty strings from formulas or data imports. Returns TRUE if the cell is blank-like, FALSE otherwise.
@@ -518,6 +519,108 @@ Single value or range to convert (empty strings become blank cells)
 
 ```
 A1:B10
+```
+
+</details>
+
+<details>
+<summary><strong>ERRORFILTER</strong></summary>
+
+### ERRORFILTER
+
+**Description**
+
+```
+v1.0.0 Filters rows and columns based on error status. Use mode to control which dimensions to process and which error conditions to filter for. Useful for data validation, debugging, and cleaning error-prone data.
+```
+
+**Parameters**
+
+```
+1. range
+2. mode
+```
+
+**Formula**
+
+```
+LET(
+  actual_mode, IF(OR(mode="", mode=0), "both", LOWER(TRIM(mode))),
+  mode_parts, SPLIT(actual_mode, "-"),
+  dimension, INDEX(mode_parts, 1),
+  has_any, IFERROR(FIND("any", actual_mode) > 0, FALSE),
+  has_all, IFERROR(FIND("all", actual_mode) > 0, FALSE),
+  valid_dimension, OR(dimension = "both", dimension = "rows", dimension = "cols"),
+
+  IF(NOT(valid_dimension),
+    NA(),
+    LET(
+      should_filter_rows, OR(dimension = "both", dimension = "rows"),
+      should_filter_cols, OR(dimension = "both", dimension = "cols"),
+
+      rows_filtered, IF(should_filter_rows,
+        LET(
+          num_cols, COLUMNS(range),
+          IF(has_any,
+            IFNA(FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((ISERROR(r)) * 1) > 0))), BLANK()),
+            IF(has_all,
+              IFNA(FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((ISERROR(r)) * 1) = num_cols))), BLANK()),
+              IFNA(FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((ISERROR(r)) * 1) = 0))), BLANK())
+            )
+          )
+        ),
+        range
+      ),
+
+      final, IF(should_filter_cols,
+        LET(
+          transposed, TRANSPOSE(rows_filtered),
+          num_rows, ROWS(rows_filtered),
+          TRANSPOSE(
+            IF(has_any,
+              IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((ISERROR(c)) * 1) > 0))), BLANK()),
+              IF(has_all,
+                IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((ISERROR(c)) * 1) = num_rows))), BLANK()),
+                IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((ISERROR(c)) * 1) = 0))), BLANK())
+              )
+            )
+          )
+        ),
+        rows_filtered
+      ),
+
+      final
+    )
+  )
+)
+```
+
+#### range
+
+**Description:**
+
+```
+The data range to filter. Example - A1:Z100
+```
+
+**Example:**
+
+```
+A1:Z100
+```
+
+#### mode
+
+**Description:**
+
+```
+Controls dimension and error filtering. Basic modes - both (default), rows, cols. Add -any to keep rows/cols with at least one error. Add -all to keep rows/cols where all cells are errors. Default keeps rows/cols with no errors. Case-insensitive. Examples: "rows", "cols-any", "both-all"
+```
+
+**Example:**
+
+```
+rows-any
 ```
 
 </details>
