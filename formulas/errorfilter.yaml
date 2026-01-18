@@ -1,0 +1,71 @@
+name: ERRORFILTER
+version: 1.0.0
+
+description: >
+  Filters rows and columns based on error status. Use mode to control which
+  dimensions to process and which error conditions to filter for. Useful for
+  data validation, debugging, and cleaning error-prone data.
+
+parameters:
+  - name: range
+    description: The data range to filter. Example - A1:Z100
+    example: "A1:Z100"
+
+  - name: mode
+    description: >
+      Controls dimension and error filtering. Basic modes - both (default), rows, cols.
+      Add -any to keep rows/cols with at least one error. Add -all to keep rows/cols
+      where all cells are errors. Default keeps rows/cols with no errors.
+      Case-insensitive. Examples: "rows", "cols-any", "both-all"
+    example: "rows-any"
+
+formula: |
+  LET(
+    actual_mode, IF(OR(mode="", mode=0), "both", LOWER(TRIM(mode))),
+    mode_parts, SPLIT(actual_mode, "-"),
+    dimension, INDEX(mode_parts, 1),
+    has_any, IFERROR(FIND("any", actual_mode) > 0, FALSE),
+    has_all, IFERROR(FIND("all", actual_mode) > 0, FALSE),
+    valid_dimension, OR(dimension = "both", dimension = "rows", dimension = "cols"),
+
+    IF(NOT(valid_dimension),
+      NA(),
+      LET(
+        should_filter_rows, OR(dimension = "both", dimension = "rows"),
+        should_filter_cols, OR(dimension = "both", dimension = "cols"),
+
+        rows_filtered, IF(should_filter_rows,
+          LET(
+            num_cols, COLUMNS(range),
+            IF(has_any,
+              IFNA(FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((ISERROR(r)) * 1) > 0))), BLANK()),
+              IF(has_all,
+                IFNA(FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((ISERROR(r)) * 1) = num_cols))), BLANK()),
+                IFNA(FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((ISERROR(r)) * 1) = 0))), BLANK())
+              )
+            )
+          ),
+          range
+        ),
+
+        final, IF(should_filter_cols,
+          LET(
+            transposed, TRANSPOSE(rows_filtered),
+            num_rows, ROWS(rows_filtered),
+            TRANSPOSE(
+              IF(has_any,
+                IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((ISERROR(c)) * 1) > 0))), BLANK()),
+                IF(has_all,
+                  IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((ISERROR(c)) * 1) = num_rows))), BLANK()),
+                  IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((ISERROR(c)) * 1) = 0))), BLANK())
+                )
+              )
+            )
+          ),
+          rows_filtered
+        ),
+
+        final
+      )
+    )
+  )
