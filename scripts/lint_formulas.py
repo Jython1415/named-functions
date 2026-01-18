@@ -93,7 +93,9 @@ class NoTopLevelLambdaRule(LintRule):
         stripped = formula.strip()
         if stripped.upper().startswith('LAMBDA('):
             # Check if it's a self-executing LAMBDA (ends with invocation like )(0) or )(args))
-            # Self-executing LAMBDAs are valid for parameterless functions
+            # Self-executing LAMBDAs are ALLOWED but NOT NECESSARY for parameterless functions.
+            # Investigation in issue #81 proved that LAMBDA(input, IF(,,))(0) and IF(,,)
+            # behave identically in all contexts. However, we allow them for backwards compatibility.
             # Pattern: LAMBDA(...)(...)
 
             # Count parentheses to find where the LAMBDA definition ends
@@ -136,7 +138,8 @@ class NoTopLevelLambdaRule(LintRule):
                 f"{file_path}: Formula starts with uninvoked LAMBDA wrapper. "
                 f"Google Sheets adds the LAMBDA wrapper automatically when you define parameters. "
                 f"Only include the formula body in the YAML file. "
-                f"Note: Self-executing LAMBDAs like 'LAMBDA(...)(...)' are allowed for parameterless functions."
+                f"Note: Self-executing LAMBDAs like 'LAMBDA(...)(...)' are allowed but unnecessary for "
+                f"parameterless functions (see issue #81)."
             )
 
         return errors

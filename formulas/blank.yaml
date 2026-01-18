@@ -1,13 +1,12 @@
 name: BLANK
-version: 1.0.1
+version: 1.1.0
 
 description: >
   Returns a truly blank cell value. This is useful in LAMBDA functions and MAP operations
   where you want to return blank cells rather than empty strings or other values.
-  Equivalent to using the omitted argument syntax in IF (e.g., IF(condition, , value)),
-  but more semantically clear and readable.
+  Uses the omitted argument syntax in IF (IF(,,)) to generate a blank value.
 
 parameters: []
 
 formula: |
-  LAMBDA(input, IF(,,))(0)
+  IF(,,)

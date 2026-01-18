@@ -9,7 +9,7 @@ A collection of named Excel/Google Sheets formulas using LET and LAMBDA function
 
 ### Quick Reference
 
-- **[BLANK](#blank)** - Returns a truly blank cell value. This is useful in LAMBDA functions and MAP operations where you want to return blank cells rather than empty strings or other values. Equivalent to using the omitted argument syntax in IF (e.g., IF(condition, , value)), but more semantically clear and readable.
+- **[BLANK](#blank)** - Returns a truly blank cell value. This is useful in LAMBDA functions and MAP operations where you want to return blank cells rather than empty strings or other values. Uses the omitted argument syntax in IF (IF(,,)) to generate a blank value.
 - **[BLANKTOEMPTY](#blanktoempty)** - Converts blank cells to empty strings. Accepts either a single value or a range. When given a range, automatically applies the conversion to all cells using MAP. Useful for ensuring consistent handling of empty values where blank cells need to be represented as empty strings ("").
 - **[BYROW_COMPLETE_ONLY](#byrow_complete_only)** - Applies a row operation only to complete rows (rows with no blank cells). Incomplete rows return a specified fallback value. Useful for processing data while gracefully handling missing values.
 - **[BYROW_NONEMPTY_ONLY](#byrow_nonempty_only)** - Applies a row operation only to non-empty rows (rows with at least one non-blank cell). Completely empty rows return a specified fallback value. Useful for filtering out empty rows during processing.
@@ -42,13 +42,13 @@ A collection of named Excel/Google Sheets formulas using LET and LAMBDA function
 **Description**
 
 ```
-v1.0.1 Returns a truly blank cell value. This is useful in LAMBDA functions and MAP operations where you want to return blank cells rather than empty strings or other values. Equivalent to using the omitted argument syntax in IF (e.g., IF(condition, , value)), but more semantically clear and readable.
+v1.1.0 Returns a truly blank cell value. This is useful in LAMBDA functions and MAP operations where you want to return blank cells rather than empty strings or other values. Uses the omitted argument syntax in IF (IF(,,)) to generate a blank value.
 ```
 
 **Formula**
 
 ```
-LAMBDA(input, IF(,,))(0)
+IF(,,)
 ```
 
 </details>
