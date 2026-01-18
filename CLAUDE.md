@@ -150,7 +150,6 @@ The composition system uses pyparsing to:
 
 - **Always run linter and generator**: Use `uv run scripts/lint_formulas.py` then `uv run scripts/generate_readme.py` after creating/modifying YAML files
 - **Formula files location**: All formula YAML files are in the `formulas/` directory
-- **No leading equals signs**: Formulas must NOT start with `=` character (enforced by linter)
 - **README.md is auto-generated**: Edit `.readme-template.md` for static content changes
 - **Use `uv` not `pip`**: The project uses `uv` for dependency management
 - **Formula composition**: Formulas can reference other named functions - the system will automatically expand them
