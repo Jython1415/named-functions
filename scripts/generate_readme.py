@@ -22,7 +22,7 @@ from typing import Dict, List, Any, Set, Tuple
 import yaml
 from pyparsing import (
     Forward, Word, alphas, alphanums, QuotedString,
-    Literal, Group, DelimitedList, ParseException,
+    Literal, Group, DelimitedList, Optional, ParseException,
     ParseResults, pyparsing_common, MatchFirst
 )
 
@@ -79,10 +79,11 @@ class FormulaParser:
 
         # Function call: FUNC(arg1, arg2, ...)
         # Group the function name and arguments together
+        # Use Optional to allow zero-argument calls like BLANK()
         function_call = Group(
             identifier("function") +
             lparen.suppress() +
-            Group(DelimitedList(expression))("args") +
+            Group(Optional(DelimitedList(expression)))("args") +
             rparen.suppress()
         )
 
@@ -113,43 +114,51 @@ class FormulaParser:
 
     def extract_function_calls(self, ast: ParseResults, named_functions: Set[str]) -> List[Dict[str, Any]]:
         """Extract function calls by looking at the AST node dict."""
-        import sys
-        # Get formula from cache
-        formula_text = self._formula_cache.get(id(ast), "") if hasattr(self, "_formula_cache") else ""
-        if "VSTACKFILL" in formula_text:
-            sys.stderr.write(f"DEBUG extract_function_calls: START with VSTACKFILL formula\n")
-            sys.stderr.flush()
         calls = []
-        
+
         # Try to extract from AST first
         def walk(node, depth=0):
-            if isinstance(node, ParseResults) and hasattr(node, "asDict"):
+            if isinstance(node, ParseResults):
                 node_dict = node.asDict()
+                # Check if it's a function call node
                 if "function" in node_dict:
                     func_name = node_dict["function"]
                     if func_name in named_functions:
-                        calls.append({"name": func_name, "args": node_dict.get("args", []), "depth": depth, "node": node})
+                        args = node_dict.get("args", [])
+                        calls.append({"name": func_name, "args": args, "depth": depth, "node": node})
+                    # Walk the args
                     if "args" in node_dict:
                         for arg in node_dict["args"]:
                             walk(arg, depth + 1)
-            elif isinstance(node, list):
+                else:
+                    # Not a function call, walk children
+                    for item in node:
+                        walk(item, depth)
+            elif isinstance(node, dict):
+                # Handle dict representation (from nested ParseResults converted to dict)
+                if "function" in node:
+                    func_name = node["function"]
+                    if func_name in named_functions:
+                        args = node.get("args", [])
+                        calls.append({"name": func_name, "args": args, "depth": depth, "node": None})
+                    # Walk the args
+                    if "args" in node:
+                        for arg in node["args"]:
+                            walk(arg, depth + 1)
+            elif isinstance(node, (list, tuple)):
                 for item in node:
                     walk(item, depth)
-        
+
         walk(ast)
-        
+
         # If pyparsing failed to parse completely, use regex fallback
         if not calls:
             formula = self._formula_cache.get(id(ast), "") if hasattr(self, "_formula_cache") else ""
             if formula:
-                if "VSTACKFILL" in formula:
-                    print(f"DEBUG extract_function_calls: formula={formula[:60]}, named_functions={len(named_functions)}")
                 for func_name in named_functions:
                     if re.search(r"\b" + re.escape(func_name) + r"\s*\(", formula):
                         calls.append({"name": func_name, "args": [], "depth": 0, "node": None})
-                        if "VSTACKFILL" in formula:
-                            print(f"  Added {func_name}")
-        
+
         return sorted(calls, key=lambda c: c["depth"], reverse=True)
 
 
@@ -408,6 +417,24 @@ def expand_argument(
         return f"{chr(34)}{arg[1]}{chr(34)}"
     if isinstance(arg, (int, float)):
         return str(arg)
+    # Handle dict representation (from nested ParseResults converted to dict)
+    if isinstance(arg, dict) and "function" in arg:
+        func_name = arg["function"]
+        inner_args = arg.get("args", [])
+        if func_name in all_formulas:
+            func_def = all_formulas[func_name]
+            func_expanded = expand_formula(func_def, all_formulas, parser, expanded_cache)
+            func_expanded_stripped = func_expanded.lstrip("=").strip()
+            # Recursively expand inner args
+            expanded_inner_args = [expand_argument(a, all_formulas, parser, expanded_cache) for a in inner_args]
+            substituted = substitute_arguments(
+                func_expanded_stripped,
+                func_def["parameters"],
+                expanded_inner_args
+            )
+            return f"({substituted})"
+        else:
+            return FormulaParser.reconstruct_call(func_name, inner_args)
     if isinstance(arg, ParseResults) and hasattr(arg, "asDict"):
         node_dict = arg.asDict()
         if "function" in node_dict:
@@ -454,6 +481,7 @@ def expand_formula(
 
     # Strip comments from formula before processing
     formula_text = strip_comments(formula_data['formula']).strip()
+    original_formula_text = formula_text  # Save for validation
     named_functions = set(all_formulas.keys())
 
     try:
@@ -469,9 +497,13 @@ def expand_formula(
         expanded_cache[name] = formula_text
         return formula_text
 
-    # Expand each call (innermost first due to depth sorting)
+    # Only process top-level calls (depth=0)
+    # Nested calls will be expanded when their parent is expanded via expand_argument
+    top_level_calls = [c for c in calls if c['depth'] == 0]
+
+    # Expand each top-level call
     result = formula_text
-    for call in calls:
+    for call in top_level_calls:
         func_name = call['name']
         args = call['args']
 
@@ -518,6 +550,15 @@ def expand_formula(
         formula_starters = ['LET(', 'LAMBDA(', 'BYROW(', 'BYCOL(', 'MAKEARRAY(', 'FILTER(', 'DENSIFY(']
         if any(result.startswith(starter) for starter in formula_starters):
             result = '=' + result
+
+    # Validation: If we had dependencies but the result equals the original formula,
+    # the parser failed to expand the function calls
+    if calls and result.lstrip('=').strip() == original_formula_text.lstrip('=').strip():
+        func_names = ', '.join(sorted({c['name'] for c in calls}))
+        raise ValidationError(
+            f"{name}: Formula calls {func_names} but expansion failed. "
+            f"Parser may have failed to parse zero-argument calls or complex syntax."
+        )
 
     expanded_cache[name] = result
     return result

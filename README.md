@@ -472,7 +472,49 @@ v2.0.0 Removes rows that are entirely blank from sparse data. This is a convenie
 **Formula**
 
 ```
-DENSIFY(range, "rows")
+=LET(
+  actual_mode, IF(OR("rows"="", "rows"=0), "both", LOWER(TRIM("rows"))),
+  mode_parts, SPLIT(actual_mode, "-"),
+  dimension, INDEX(mode_parts, 1),
+  has_any, IFERROR(FIND("any", actual_mode) > 0, FALSE),
+  has_strict, IFERROR(FIND("strict", actual_mode) > 0, FALSE),
+  valid_dimension, OR(dimension = "both", dimension = "rows", dimension = "cols"),
+
+  IF(NOT(valid_dimension),
+    NA(),
+    LET(
+      should_remove_rows, OR(dimension = "both", dimension = "rows"),
+      should_remove_cols, OR(dimension = "both", dimension = "cols"),
+
+      rows_filtered, IF(should_remove_rows,
+        LET(
+          threshold, IF(has_any, COLUMNS(range), 1),
+          result, IF(has_strict,
+            FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((IFERROR(LEN(TRIM(r)) > 0, TRUE)) * 1) >= threshold))),
+            FILTER(range, BYROW(range, LAMBDA(r, COUNTA(r) >= threshold)))
+          ),
+          IF(ISNA(ROWS(result)), (IF(,,)), result)
+        ),
+        range
+      ),
+
+      final, IF(should_remove_cols,
+        LET(
+          transposed, TRANSPOSE(rows_filtered),
+          threshold, IF(has_any, ROWS(rows_filtered), 1),
+          result, IF(has_strict,
+            FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((IFERROR(LEN(TRIM(c)) > 0, TRUE)) * 1) >= threshold))),
+            FILTER(transposed, BYROW(transposed, LAMBDA(c, COUNTA(c) >= threshold)))
+          ),
+          IF(ISNA(ROWS(result)), (IF(,,)), TRANSPOSE(result))
+        ),
+        rows_filtered
+      ),
+
+      final
+    )
+  )
+)
 ```
 
 #### range
@@ -958,7 +1000,18 @@ v1.0.0 Stacks two arrays horizontally, padding shorter arrays with blank cells t
 **Formula**
 
 ```
-HSTACKFILL(array1, array2, BLANK())
+=LET(
+  rows1, ROWS(array1),
+  rows2, ROWS(array2),
+  max_rows, MAX(rows1, rows2),
+  padded1, IF(rows1 < max_rows,
+              VSTACK(array1, MAKEARRAY(max_rows - rows1, COLUMNS(array1), LAMBDA(r, c, (IF(,,))))),
+              array1),
+  padded2, IF(rows2 < max_rows,
+              VSTACK(array2, MAKEARRAY(max_rows - rows2, COLUMNS(array2), LAMBDA(r, c, (IF(,,))))),
+              array2),
+  HSTACK(padded1, padded2)
+)
 ```
 
 #### array1
@@ -1800,7 +1853,18 @@ v1.0.0 Stacks two arrays vertically, padding narrower arrays with blank cells to
 **Formula**
 
 ```
-VSTACKFILL(array1, array2, BLANK())
+=LET(
+  cols1, COLUMNS(array1),
+  cols2, COLUMNS(array2),
+  max_cols, MAX(cols1, cols2),
+  padded1, IF(cols1 < max_cols,
+              HSTACK(array1, MAKEARRAY(ROWS(array1), max_cols - cols1, LAMBDA(r, c, (IF(,,))))),
+              array1),
+  padded2, IF(cols2 < max_cols,
+              HSTACK(array2, MAKEARRAY(ROWS(array2), max_cols - cols2, LAMBDA(r, c, (IF(,,))))),
+              array2),
+  VSTACK(padded1, padded2)
+)
 ```
 
 #### array1
