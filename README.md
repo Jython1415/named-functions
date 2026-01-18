@@ -17,6 +17,7 @@ A collection of named Excel/Google Sheets formulas using LET and LAMBDA function
 - **[DENSIFY](#densify)** - Removes empty or incomplete rows and columns from sparse data. Use mode to control which dimensions to process and how strict to be. Supports data validation (remove incomplete records) and whitespace handling (treat spaces as empty).
 - **[DENSIFYROWS](#densifyrows)** - Removes rows that are entirely blank from sparse data. This is a convenience wrapper around DENSIFY that specifically targets row operations with the "rows" mode.
 - **[EMPTYTOBLANK](#emptytoblank)** - Converts empty strings to blank cells. Accepts either a single value or a range. When given a range, automatically applies the conversion to all cells using MAP. Useful for cleaning data where empty strings should be represented as true blanks.
+- **[ERROR](#error)** - Displays a custom error message as an #N/A error with a configurable tooltip. Uses an empty array trick to ensure the error always triggers, regardless of cell contents. Useful for validation and user-friendly error reporting.
 - **[ERRORFILTER](#errorfilter)** - Filters rows and columns based on error status. Use mode to control which dimensions to process and which error conditions to filter for. Useful for data validation, debugging, and cleaning error-prone data.
 - **[GROUPBY](#groupby)** - Groups data by one or more columns and applies custom aggregation logic via LAMBDA functions, implementing SQL-like GROUP BY functionality. Does not handle headers - provide data without header row.
 - **[HEADERS](#headers)** - Extracts the header row (first row) from a data range. This is useful for separating headers from data, especially when working with structured data.
@@ -520,6 +521,47 @@ Single value or range to convert (empty strings become blank cells)
 
 ```
 A1:B10
+```
+
+</details>
+
+<details>
+<summary><strong>ERROR</strong></summary>
+
+### ERROR
+
+**Description**
+
+```
+v1.0.0 Displays a custom error message as an #N/A error with a configurable tooltip. Uses an empty array trick to ensure the error always triggers, regardless of cell contents. Useful for validation and user-friendly error reporting.
+```
+
+**Parameters**
+
+```
+1. message
+```
+
+**Formula**
+
+```
+LAMBDA(message,
+  XLOOKUP(message, IF(FALSE, {1}), IF(FALSE, {1}))
+)
+```
+
+#### message
+
+**Description:**
+
+```
+The error message to display in the tooltip
+```
+
+**Example:**
+
+```
+"Value must be between 1 and 100"
 ```
 
 </details>
