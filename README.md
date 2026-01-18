@@ -391,7 +391,7 @@ LET(
         LET(
           threshold, IF(has_any, COLUMNS(range), 1),
           result, IF(has_strict,
-            FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((IFERROR(LEN(TRIM(r)) > 0, TRUE)) * 1) >= threshold)),
+            FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((IFERROR(LEN(TRIM(r)) > 0, TRUE)) * 1) >= threshold))),
             FILTER(range, BYROW(range, LAMBDA(r, COUNTA(r) >= threshold)))
           ),
           IF(ISNA(ROWS(result)), BLANK(), result)
@@ -404,7 +404,7 @@ LET(
           transposed, TRANSPOSE(rows_filtered),
           threshold, IF(has_any, ROWS(rows_filtered), 1),
           result, IF(has_strict,
-            FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((IFERROR(LEN(TRIM(c)) > 0, TRUE)) * 1) >= threshold)),
+            FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((IFERROR(LEN(TRIM(c)) > 0, TRUE)) * 1) >= threshold))),
             FILTER(transposed, BYROW(transposed, LAMBDA(c, COUNTA(c) >= threshold)))
           ),
           IF(ISNA(ROWS(result)), BLANK(), TRANSPOSE(result))
@@ -468,7 +468,7 @@ v2.0.0 Removes rows that are entirely blank from sparse data. This is a convenie
 **Formula**
 
 ```
-(LET(
+=LET(
   actual_mode, IF(OR("rows"="", "rows"=0), "both", LOWER(TRIM("rows"))),
   mode_parts, SPLIT(actual_mode, "-"),
   dimension, INDEX(mode_parts, 1),
@@ -486,7 +486,7 @@ v2.0.0 Removes rows that are entirely blank from sparse data. This is a convenie
         LET(
           threshold, IF(has_any, COLUMNS(range), 1),
           result, IF(has_strict,
-            FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((IFERROR(LEN(TRIM(r)) > 0, TRUE)) * 1) >= threshold)),
+            FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((IFERROR(LEN(TRIM(r)) > 0, TRUE)) * 1) >= threshold))),
             FILTER(range, BYROW(range, LAMBDA(r, COUNTA(r) >= threshold)))
           ),
           IF(ISNA(ROWS(result)), BLANK(), result)
@@ -499,7 +499,7 @@ v2.0.0 Removes rows that are entirely blank from sparse data. This is a convenie
           transposed, TRANSPOSE(rows_filtered),
           threshold, IF(has_any, ROWS(rows_filtered), 1),
           result, IF(has_strict,
-            FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((IFERROR(LEN(TRIM(c)) > 0, TRUE)) * 1) >= threshold)),
+            FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((IFERROR(LEN(TRIM(c)) > 0, TRUE)) * 1) >= threshold))),
             FILTER(transposed, BYROW(transposed, LAMBDA(c, COUNTA(c) >= threshold)))
           ),
           IF(ISNA(ROWS(result)), BLANK(), TRANSPOSE(result))
@@ -510,7 +510,7 @@ v2.0.0 Removes rows that are entirely blank from sparse data. This is a convenie
       final
     )
   )
-))
+)
 ```
 
 #### range
