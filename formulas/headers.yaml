@@ -20,15 +20,6 @@ formula: |
   LET(
     rows, IF(OR(num_rows = "", ISBLANK(num_rows)), 1, num_rows),
 
-    /* Validate we have enough rows */
-    _validate, IF(rows > ROWS(range),
-      ERROR("num_rows (" & rows & ") exceeds total rows in range (" & ROWS(range) & ")"),
-      TRUE
-    ),
-
-    /* Extract the header row(s) */
-    IF(rows = 1,
-      CHOOSEROWS(range, 1),
-      CHOOSEROWS(range, SEQUENCE(rows))
-    )
+    /* Use TAKEROWS for efficient extraction */
+    TAKEROWS(range, rows)
   )

@@ -1,0 +1,33 @@
+name: TAKE
+version: 1.0.0
+
+description: >
+  Takes a rectangular region from a range (both rows and columns). This is the
+  Excel-compatible TAKE function. Positive row/col values take from start, negative
+  from end. Both parameters are required.
+
+parameters:
+  - name: range
+    description: The input data range
+    example: "A1:Z100"
+
+  - name: rows
+    description: >
+      Number of rows to take. Positive values take from start, negative from end.
+      Cannot be 0 or have absolute value exceeding total rows.
+    example: 10
+
+  - name: cols
+    description: >
+      Number of columns to take. Positive values take from start, negative from end.
+      Cannot be 0 or have absolute value exceeding total columns.
+    example: 5
+
+formula: |
+  LET(
+    /* Apply TAKEROWS first to get the desired rows */
+    rows_taken, TAKEROWS(range, rows),
+
+    /* Then apply TAKECOLS to get the desired columns */
+    TAKECOLS(rows_taken, cols)
+  )
