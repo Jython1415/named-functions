@@ -15,7 +15,7 @@ A collection of named Excel/Google Sheets formulas using LET and LAMBDA function
 - **[BYROW_NONEMPTY_ONLY](#byrow_nonempty_only)** - Applies a row operation only to non-empty rows (rows with at least one non-blank cell). Completely empty rows return a specified fallback value. Useful for filtering out empty rows during processing.
 - **[CELLREF](#cellref)** - Converts a cell or range reference to its A1 notation string representation. Returns the relative reference (e.g., "N6") for the given cell. This is useful for generating dynamic cell references, creating hyperlinks, or building formulas programmatically.
 - **[DATAROWS](#datarows)** - Extracts all data rows (excluding header rows) from a data range. This is useful for separating data from headers, especially when performing operations that should only apply to data rows.
-- **[DENSIFY](#densify)** - Removes empty or incomplete rows and columns from sparse data. Use mode to control which dimensions to process and how strict to be. Supports data validation (remove incomplete records) and whitespace handling (treat spaces as empty).
+- **[DENSIFY](#densify)** - Removes empty or incomplete rows and columns from sparse data. Use mode to control which dimensions to process and how strict to be. Supports data validation (remove incomplete records) and whitespace handling (treat spaces as empty). Preserves all error types (#N/A, #DIV/0!, etc.) - rows/columns containing errors are kept and error values remain intact. Returns BLANK() when all rows/columns are filtered out.
 - **[DENSIFYROWS](#densifyrows)** - Removes rows that are entirely blank from sparse data. This is a convenience wrapper around DENSIFY that specifically targets row operations with the "rows" mode.
 - **[EMPTYTOBLANK](#emptytoblank)** - Converts empty strings to blank cells. Accepts either a single value or a range. When given a range, automatically applies the conversion to all cells using MAP. Useful for cleaning data where empty strings should be represented as true blanks.
 - **[ERROR](#error)** - Displays a custom error message as an #N/A error with a configurable tooltip. Uses an empty array trick to ensure the error always triggers, regardless of cell contents. Useful for validation and user-friendly error reporting.
@@ -358,7 +358,7 @@ Number of header rows to skip (default: 1). Use this when you have multi-row hea
 **Description**
 
 ```
-v1.0.3 Removes empty or incomplete rows and columns from sparse data. Use mode to control which dimensions to process and how strict to be. Supports data validation (remove incomplete records) and whitespace handling (treat spaces as empty).
+v1.0.6 Removes empty or incomplete rows and columns from sparse data. Use mode to control which dimensions to process and how strict to be. Supports data validation (remove incomplete records) and whitespace handling (treat spaces as empty). Preserves all error types (#N/A, #DIV/0!, etc.) - rows/columns containing errors are kept and error values remain intact. Returns BLANK() when all rows/columns are filtered out.
 ```
 
 **Parameters**
@@ -388,10 +388,11 @@ LET(
       rows_filtered, IF(should_remove_rows,
         LET(
           threshold, IF(has_any, COLUMNS(range), 1),
-          IF(has_strict,
-            IFNA(FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((LEN(TRIM(r)) > 0) * 1) >= threshold))), BLANK()),
-            IFNA(FILTER(range, BYROW(range, LAMBDA(r, COUNTA(r) >= threshold))), BLANK())
-          )
+          result, IF(has_strict,
+            FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((IFERROR(LEN(TRIM(r)) > 0, TRUE)) * 1) >= threshold)),
+            FILTER(range, BYROW(range, LAMBDA(r, COUNTA(r) >= threshold)))
+          ),
+          IF(ISNA(ROWS(result)), BLANK(), result)
         ),
         range
       ),
@@ -400,12 +401,11 @@ LET(
         LET(
           transposed, TRANSPOSE(rows_filtered),
           threshold, IF(has_any, ROWS(rows_filtered), 1),
-          TRANSPOSE(
-            IF(has_strict,
-              IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((LEN(TRIM(c)) > 0) * 1) >= threshold))), BLANK()),
-              IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, COUNTA(c) >= threshold))), BLANK())
-            )
-          )
+          result, IF(has_strict,
+            FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((IFERROR(LEN(TRIM(c)) > 0, TRUE)) * 1) >= threshold)),
+            FILTER(transposed, BYROW(transposed, LAMBDA(c, COUNTA(c) >= threshold)))
+          ),
+          IF(ISNA(ROWS(result)), BLANK(), TRANSPOSE(result))
         ),
         rows_filtered
       ),
@@ -466,7 +466,7 @@ v2.0.0 Removes rows that are entirely blank from sparse data. This is a convenie
 **Formula**
 
 ```
-=LET(
+(LET(
   actual_mode, IF(OR("rows"="", "rows"=0), "both", LOWER(TRIM("rows"))),
   mode_parts, SPLIT(actual_mode, "-"),
   dimension, INDEX(mode_parts, 1),
@@ -483,10 +483,11 @@ v2.0.0 Removes rows that are entirely blank from sparse data. This is a convenie
       rows_filtered, IF(should_remove_rows,
         LET(
           threshold, IF(has_any, COLUMNS(range), 1),
-          IF(has_strict,
-            IFNA(FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((LEN(TRIM(r)) > 0) * 1) >= threshold))), BLANK()),
-            IFNA(FILTER(range, BYROW(range, LAMBDA(r, COUNTA(r) >= threshold))), BLANK())
-          )
+          result, IF(has_strict,
+            FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((IFERROR(LEN(TRIM(r)) > 0, TRUE)) * 1) >= threshold)),
+            FILTER(range, BYROW(range, LAMBDA(r, COUNTA(r) >= threshold)))
+          ),
+          IF(ISNA(ROWS(result)), BLANK(), result)
         ),
         range
       ),
@@ -495,12 +496,11 @@ v2.0.0 Removes rows that are entirely blank from sparse data. This is a convenie
         LET(
           transposed, TRANSPOSE(rows_filtered),
           threshold, IF(has_any, ROWS(rows_filtered), 1),
-          TRANSPOSE(
-            IF(has_strict,
-              IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((LEN(TRIM(c)) > 0) * 1) >= threshold))), BLANK()),
-              IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, COUNTA(c) >= threshold))), BLANK())
-            )
-          )
+          result, IF(has_strict,
+            FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((IFERROR(LEN(TRIM(c)) > 0, TRUE)) * 1) >= threshold)),
+            FILTER(transposed, BYROW(transposed, LAMBDA(c, COUNTA(c) >= threshold)))
+          ),
+          IF(ISNA(ROWS(result)), BLANK(), TRANSPOSE(result))
         ),
         rows_filtered
       ),
@@ -508,7 +508,7 @@ v2.0.0 Removes rows that are entirely blank from sparse data. This is a convenie
       final
     )
   )
-)
+))
 ```
 
 #### range
