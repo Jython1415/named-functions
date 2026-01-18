@@ -1,0 +1,17 @@
+name: ERROR
+version: 1.0.0
+
+description: >
+  Displays a custom error message as an #N/A error with a configurable tooltip.
+  Uses an empty array trick to ensure the error always triggers, regardless of
+  cell contents. Useful for validation and user-friendly error reporting.
+
+parameters:
+  - name: message
+    description: The error message to display in the tooltip
+    example: '"Value must be between 1 and 100"'
+
+formula: |
+  LAMBDA(message,
+    XLOOKUP(message, IF(FALSE, {1}), IF(FALSE, {1}))
+  )
