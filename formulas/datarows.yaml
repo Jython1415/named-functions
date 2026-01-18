@@ -21,13 +21,6 @@ formula: |
   LET(
     header_rows, IF(OR(num_header_rows = "", ISBLANK(num_header_rows)), 1, num_header_rows),
 
-    /* Validate we have enough rows */
-    total_rows, ROWS(range),
-    _validate, IF(header_rows >= total_rows,
-      ERROR("num_header_rows (" & header_rows & ") must be less than total rows (" & total_rows & ")"),
-      TRUE
-    ),
-
-    /* Use OMITROWS to exclude the header row(s) */
-    OMITROWS(range, SEQUENCE(header_rows))
+    /* Use DROPROWS for more efficient extraction */
+    DROPROWS(range, header_rows)
   )

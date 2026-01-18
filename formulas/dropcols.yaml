@@ -1,0 +1,25 @@
+name: DROPCOLS
+version: 1.0.0
+
+description: >
+  Drops the first or last N columns from a range. Positive num_cols drops from
+  the start, negative num_cols drops from the end. Uses the transpose pattern
+  to work with columns.
+
+parameters:
+  - name: range
+    description: The input data range
+    example: "A1:Z100"
+
+  - name: num_cols
+    description: >
+      Number of columns to drop. Positive values drop from start, negative from end.
+      Cannot be 0 or have absolute value exceeding or equaling total columns.
+    example: 5
+
+formula: |
+  LET(
+    transposed, TRANSPOSE(range),
+    result, DROPROWS(transposed, num_cols),
+    TRANSPOSE(result)
+  )

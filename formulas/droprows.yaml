@@ -1,0 +1,49 @@
+name: DROPROWS
+version: 1.0.0
+
+description: >
+  Drops the first or last N rows from a range. Positive num_rows drops from the
+  start, negative num_rows drops from the end. Cannot drop all rows.
+
+parameters:
+  - name: range
+    description: The input data range
+    example: "A1:Z100"
+
+  - name: num_rows
+    description: >
+      Number of rows to drop. Positive values drop from start, negative from end.
+      Cannot be 0 or have absolute value exceeding or equaling total rows.
+    example: 5
+
+formula: |
+  LET(
+    total_rows, ROWS(range),
+
+    /* Validate num_rows is not zero */
+    _validate_zero, IF(num_rows = 0,
+      ERROR("num_rows cannot be 0"),
+      TRUE
+    ),
+
+    /* Convert negative indices to positive (e.g., -1 means drop last row) */
+    normalized_count, IF(num_rows > 0,
+      num_rows,
+      total_rows + num_rows + 1
+    ),
+
+    /* Validate we don't drop everything */
+    _validate_excess, IF(OR(normalized_count < 0, normalized_count >= total_rows),
+      ERROR("num_rows has absolute value (" & ABS(num_rows) & ") exceeds available rows (" & total_rows & ")"),
+      TRUE
+    ),
+
+    /* Calculate rows to keep */
+    rows_to_keep, total_rows - normalized_count,
+
+    /* Drop the rows using SEQUENCE offset */
+    IF(rows_to_keep = 1,
+      CHOOSEROWS(range, normalized_count + 1),
+      CHOOSEROWS(range, SEQUENCE(rows_to_keep, 1, normalized_count + 1))
+    )
+  )

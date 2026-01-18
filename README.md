@@ -17,6 +17,9 @@ A collection of named Excel/Google Sheets formulas using LET and LAMBDA function
 - **[DATAROWS](#datarows)** - Extracts all data rows (excluding header rows) from a data range. This is useful for separating data from headers, especially when performing operations that should only apply to data rows.
 - **[DENSIFY](#densify)** - Removes empty or incomplete rows and columns from sparse data. Use mode to control which dimensions to process and how strict to be. Supports data validation (remove incomplete records) and whitespace handling (treat spaces as empty). Preserves all error types (#N/A, #DIV/0!, etc.) - rows/columns containing errors are kept and error values remain intact. Returns BLANK() when all rows/columns are filtered out.
 - **[DENSIFYROWS](#densifyrows)** - Removes rows that are entirely blank from sparse data. This is a convenience wrapper around DENSIFY that specifically targets row operations with the "rows" mode.
+- **[DROP](#drop)** - Drops a specified number of rows and columns from a range (both dimensions). This is the Excel-compatible DROP function. Positive row/col values drop from start, negative from end. Both parameters are required.
+- **[DROPCOLS](#dropcols)** - Drops the first or last N columns from a range. Positive num_cols drops from the start, negative num_cols drops from the end. Uses the transpose pattern to work with columns.
+- **[DROPROWS](#droprows)** - Drops the first or last N rows from a range. Positive num_rows drops from the start, negative num_rows drops from the end. Cannot drop all rows.
 - **[EMPTYTOBLANK](#emptytoblank)** - Converts empty strings to blank cells. Accepts either a single value or a range. When given a range, automatically applies the conversion to all cells using MAP. Useful for cleaning data where empty strings should be represented as true blanks.
 - **[ERROR](#error)** - Displays a custom error message as an #N/A error with a configurable tooltip. Uses an empty array trick to ensure the error always triggers, regardless of cell contents. Useful for validation and user-friendly error reporting.
 - **[ERRORFILTER](#errorfilter)** - Filters rows and columns based on error status. Use mode to control which dimensions to process and which error conditions to filter for. Useful for data validation, debugging, and cleaning error-prone data.
@@ -31,6 +34,9 @@ A collection of named Excel/Google Sheets formulas using LET and LAMBDA function
 - **[OMITROWS](#omitrows)** - Excludes specified rows from a range. This is the negation of CHOOSEROWS - instead of selecting rows to keep, it selects rows to remove.
 - **[RANGEREF](#rangeref)** - Converts a range reference to its A1 notation string representation. Returns the range in A1 notation (e.g., "A1:B10") for the given range. For single-cell ranges, returns just the cell reference (e.g., "A1" instead of "A1:A1"). This is useful for generating dynamic range references, creating hyperlinks, or building formulas programmatically.
 - **[SUBSTITUTEMULTI](#substitutemulti)** - Applies multiple SUBSTITUTE operations sequentially using a two-column mapping range. Substitutions are applied in row order, with later substitutions operating on the results of earlier ones. This enables powerful multi-stage text transformations.
+- **[TAKE](#take)** - Takes a rectangular region from a range (both rows and columns). This is the Excel-compatible TAKE function. Positive row/col values take from start, negative from end. Both parameters are required.
+- **[TAKECOLS](#takecols)** - Takes the first or last N columns from a range. Positive num_cols takes from the start, negative num_cols takes from the end. Uses the transpose pattern to work with columns.
+- **[TAKEROWS](#takerows)** - Takes the first or last N rows from a range. Positive num_rows takes from the start, negative num_rows takes from the end. Useful for extracting top or bottom rows from a dataset.
 - **[TEXTAFTER](#textafter)** - Returns text that appears after a specified delimiter. Supports forward/backward search, case-sensitive/insensitive matching, and customizable error handling. Replicates Excel's TEXTAFTER function for Google Sheets.
 - **[UNPIVOT](#unpivot)** - Transforms wide-format data into long-format (tidy data) by unpivoting specified columns into attribute-value pairs.
 - **[VSTACKBLANK](#vstackblank)** - Stacks two arrays vertically, padding narrower arrays with blank cells to match dimensions. Convenience wrapper for VSTACKFILL using BLANK().
@@ -315,14 +321,7 @@ LET(
   header_rows, IF(OR(num_header_rows = "", ISBLANK(num_header_rows)), 1, num_header_rows),
 
   
-  total_rows, ROWS(range),
-  _validate, IF(header_rows >= total_rows,
-    ERROR("num_header_rows (" & header_rows & ") must be less than total rows (" & total_rows & ")"),
-    TRUE
-  ),
-
-  
-  OMITROWS(range, SEQUENCE(header_rows))
+  DROPROWS(range, header_rows)
 )
 ```
 
@@ -529,6 +528,216 @@ The data range to densify (remove empty rows)
 
 ```
 A1:Z100
+```
+
+</details>
+
+<details>
+<summary><strong>DROP</strong></summary>
+
+### DROP
+
+**Description**
+
+```
+v1.0.0 Drops a specified number of rows and columns from a range (both dimensions). This is the Excel-compatible DROP function. Positive row/col values drop from start, negative from end. Both parameters are required.
+```
+
+**Parameters**
+
+```
+1. range
+2. rows
+3. cols
+```
+
+**Formula**
+
+```
+LET(
+  
+  rows_dropped, DROPROWS(range, rows),
+
+  
+  DROPCOLS(rows_dropped, cols)
+)
+```
+
+#### range
+
+**Description:**
+
+```
+The input data range
+```
+
+**Example:**
+
+```
+A1:Z100
+```
+
+#### rows
+
+**Description:**
+
+```
+Number of rows to drop. Positive values drop from start, negative from end. Cannot be 0 or have absolute value exceeding or equaling total rows.
+```
+
+**Example:**
+
+```
+1
+```
+
+#### cols
+
+**Description:**
+
+```
+Number of columns to drop. Positive values drop from start, negative from end. Cannot be 0 or have absolute value exceeding or equaling total columns.
+```
+
+</details>
+
+<details>
+<summary><strong>DROPCOLS</strong></summary>
+
+### DROPCOLS
+
+**Description**
+
+```
+v1.0.0 Drops the first or last N columns from a range. Positive num_cols drops from the start, negative num_cols drops from the end. Uses the transpose pattern to work with columns.
+```
+
+**Parameters**
+
+```
+1. range
+2. num_cols
+```
+
+**Formula**
+
+```
+LET(
+  transposed, TRANSPOSE(range),
+  result, DROPROWS(transposed, num_cols),
+  TRANSPOSE(result)
+)
+```
+
+#### range
+
+**Description:**
+
+```
+The input data range
+```
+
+**Example:**
+
+```
+A1:Z100
+```
+
+#### num_cols
+
+**Description:**
+
+```
+Number of columns to drop. Positive values drop from start, negative from end. Cannot be 0 or have absolute value exceeding or equaling total columns.
+```
+
+**Example:**
+
+```
+5
+```
+
+</details>
+
+<details>
+<summary><strong>DROPROWS</strong></summary>
+
+### DROPROWS
+
+**Description**
+
+```
+v1.0.0 Drops the first or last N rows from a range. Positive num_rows drops from the start, negative num_rows drops from the end. Cannot drop all rows.
+```
+
+**Parameters**
+
+```
+1. range
+2. num_rows
+```
+
+**Formula**
+
+```
+LET(
+  total_rows, ROWS(range),
+
+  
+  _validate_zero, IF(num_rows = 0,
+    ERROR("num_rows cannot be 0"),
+    TRUE
+  ),
+
+  
+  normalized_count, IF(num_rows > 0,
+    num_rows,
+    total_rows + num_rows + 1
+  ),
+
+  
+  _validate_excess, IF(OR(normalized_count < 0, normalized_count >= total_rows),
+    ERROR("num_rows has absolute value (" & ABS(num_rows) & ") exceeds available rows (" & total_rows & ")"),
+    TRUE
+  ),
+
+  
+  rows_to_keep, total_rows - normalized_count,
+
+  
+  IF(rows_to_keep = 1,
+    CHOOSEROWS(range, normalized_count + 1),
+    CHOOSEROWS(range, SEQUENCE(rows_to_keep, 1, normalized_count + 1))
+  )
+)
+```
+
+#### range
+
+**Description:**
+
+```
+The input data range
+```
+
+**Example:**
+
+```
+A1:Z100
+```
+
+#### num_rows
+
+**Description:**
+
+```
+Number of rows to drop. Positive values drop from start, negative from end. Cannot be 0 or have absolute value exceeding or equaling total rows.
+```
+
+**Example:**
+
+```
+5
 ```
 
 </details>
@@ -936,16 +1145,7 @@ LET(
   rows, IF(OR(num_rows = "", ISBLANK(num_rows)), 1, num_rows),
 
   
-  _validate, IF(rows > ROWS(range),
-    ERROR("num_rows (" & rows & ") exceeds total rows in range (" & ROWS(range) & ")"),
-    TRUE
-  ),
-
-  
-  IF(rows = 1,
-    CHOOSEROWS(range, 1),
-    CHOOSEROWS(range, SEQUENCE(rows))
-  )
+  TAKEROWS(range, rows)
 )
 ```
 
@@ -1487,6 +1687,219 @@ Two-column range where column 1 contains text to find and column 2 contains repl
 
 ```
 B1:C5
+```
+
+</details>
+
+<details>
+<summary><strong>TAKE</strong></summary>
+
+### TAKE
+
+**Description**
+
+```
+v1.0.0 Takes a rectangular region from a range (both rows and columns). This is the Excel-compatible TAKE function. Positive row/col values take from start, negative from end. Both parameters are required.
+```
+
+**Parameters**
+
+```
+1. range
+2. rows
+3. cols
+```
+
+**Formula**
+
+```
+LET(
+  
+  rows_taken, TAKEROWS(range, rows),
+
+  
+  TAKECOLS(rows_taken, cols)
+)
+```
+
+#### range
+
+**Description:**
+
+```
+The input data range
+```
+
+**Example:**
+
+```
+A1:Z100
+```
+
+#### rows
+
+**Description:**
+
+```
+Number of rows to take. Positive values take from start, negative from end. Cannot be 0 or have absolute value exceeding total rows.
+```
+
+**Example:**
+
+```
+10
+```
+
+#### cols
+
+**Description:**
+
+```
+Number of columns to take. Positive values take from start, negative from end. Cannot be 0 or have absolute value exceeding total columns.
+```
+
+**Example:**
+
+```
+5
+```
+
+</details>
+
+<details>
+<summary><strong>TAKECOLS</strong></summary>
+
+### TAKECOLS
+
+**Description**
+
+```
+v1.0.0 Takes the first or last N columns from a range. Positive num_cols takes from the start, negative num_cols takes from the end. Uses the transpose pattern to work with columns.
+```
+
+**Parameters**
+
+```
+1. range
+2. num_cols
+```
+
+**Formula**
+
+```
+LET(
+  transposed, TRANSPOSE(range),
+  result, TAKEROWS(transposed, num_cols),
+  TRANSPOSE(result)
+)
+```
+
+#### range
+
+**Description:**
+
+```
+The input data range
+```
+
+**Example:**
+
+```
+A1:Z100
+```
+
+#### num_cols
+
+**Description:**
+
+```
+Number of columns to take. Positive values take from start, negative from end. Cannot be 0 or have absolute value exceeding total columns.
+```
+
+**Example:**
+
+```
+5
+```
+
+</details>
+
+<details>
+<summary><strong>TAKEROWS</strong></summary>
+
+### TAKEROWS
+
+**Description**
+
+```
+v1.0.0 Takes the first or last N rows from a range. Positive num_rows takes from the start, negative num_rows takes from the end. Useful for extracting top or bottom rows from a dataset.
+```
+
+**Parameters**
+
+```
+1. range
+2. num_rows
+```
+
+**Formula**
+
+```
+LET(
+  total_rows, ROWS(range),
+
+  
+  _validate_zero, IF(num_rows = 0,
+    ERROR("num_rows cannot be 0"),
+    TRUE
+  ),
+
+  
+  normalized_count, IF(num_rows > 0,
+    num_rows,
+    total_rows + num_rows + 1
+  ),
+
+  
+  _validate_excess, IF(OR(normalized_count < 0, normalized_count > total_rows),
+    ERROR("num_rows has absolute value (" & ABS(num_rows) & ") exceeding total rows (" & total_rows & ")"),
+    TRUE
+  ),
+
+  
+  IF(normalized_count = 1,
+    CHOOSEROWS(range, 1),
+    CHOOSEROWS(range, SEQUENCE(normalized_count))
+  )
+)
+```
+
+#### range
+
+**Description:**
+
+```
+The input data range
+```
+
+**Example:**
+
+```
+A1:Z100
+```
+
+#### num_rows
+
+**Description:**
+
+```
+Number of rows to take. Positive values take from start, negative from end. Cannot be 0 or have absolute value exceeding total rows.
+```
+
+**Example:**
+
+```
+5
 ```
 
 </details>

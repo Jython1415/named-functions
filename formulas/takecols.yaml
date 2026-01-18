@@ -1,0 +1,25 @@
+name: TAKECOLS
+version: 1.0.0
+
+description: >
+  Takes the first or last N columns from a range. Positive num_cols takes from
+  the start, negative num_cols takes from the end. Uses the transpose pattern
+  to work with columns.
+
+parameters:
+  - name: range
+    description: The input data range
+    example: "A1:Z100"
+
+  - name: num_cols
+    description: >
+      Number of columns to take. Positive values take from start, negative from end.
+      Cannot be 0 or have absolute value exceeding total columns.
+    example: 5
+
+formula: |
+  LET(
+    transposed, TRANSPOSE(range),
+    result, TAKEROWS(transposed, num_cols),
+    TRANSPOSE(result)
+  )

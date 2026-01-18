@@ -1,0 +1,47 @@
+name: TAKEROWS
+version: 1.0.0
+
+description: >
+  Takes the first or last N rows from a range. Positive num_rows takes from the
+  start, negative num_rows takes from the end. Useful for extracting top or
+  bottom rows from a dataset.
+
+parameters:
+  - name: range
+    description: The input data range
+    example: "A1:Z100"
+
+  - name: num_rows
+    description: >
+      Number of rows to take. Positive values take from start, negative from end.
+      Cannot be 0 or have absolute value exceeding total rows.
+    example: 5
+
+formula: |
+  LET(
+    total_rows, ROWS(range),
+
+    /* Validate num_rows is not zero */
+    _validate_zero, IF(num_rows = 0,
+      ERROR("num_rows cannot be 0"),
+      TRUE
+    ),
+
+    /* Convert negative indices to positive (e.g., -1 becomes last row) */
+    normalized_count, IF(num_rows > 0,
+      num_rows,
+      total_rows + num_rows + 1
+    ),
+
+    /* Validate we have enough rows */
+    _validate_excess, IF(OR(normalized_count < 0, normalized_count > total_rows),
+      ERROR("num_rows has absolute value (" & ABS(num_rows) & ") exceeding total rows (" & total_rows & ")"),
+      TRUE
+    ),
+
+    /* Take the rows */
+    IF(normalized_count = 1,
+      CHOOSEROWS(range, 1),
+      CHOOSEROWS(range, SEQUENCE(normalized_count))
+    )
+  )

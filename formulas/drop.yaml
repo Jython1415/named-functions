@@ -1,0 +1,33 @@
+name: DROP
+version: 1.0.0
+
+description: >
+  Drops a specified number of rows and columns from a range (both dimensions).
+  This is the Excel-compatible DROP function. Positive row/col values drop from
+  start, negative from end. Both parameters are required.
+
+parameters:
+  - name: range
+    description: The input data range
+    example: "A1:Z100"
+
+  - name: rows
+    description: >
+      Number of rows to drop. Positive values drop from start, negative from end.
+      Cannot be 0 or have absolute value exceeding or equaling total rows.
+    example: 1
+
+  - name: cols
+    description: >
+      Number of columns to drop. Positive values drop from start, negative from end.
+      Cannot be 0 or have absolute value exceeding or equaling total columns.
+    example: 0
+
+formula: |
+  LET(
+    /* Apply DROPROWS first to remove the desired rows */
+    rows_dropped, DROPROWS(range, rows),
+
+    /* Then apply DROPCOLS to remove the desired columns */
+    DROPCOLS(rows_dropped, cols)
+  )
