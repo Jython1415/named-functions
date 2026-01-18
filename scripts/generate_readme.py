@@ -22,7 +22,7 @@ from typing import Dict, List, Any, Set, Tuple
 import yaml
 from pyparsing import (
     Forward, Word, alphas, alphanums, QuotedString,
-    Literal, Group, DelimitedList, ParseException,
+    Literal, Group, DelimitedList, Optional, ParseException,
     ParseResults, pyparsing_common, MatchFirst
 )
 
@@ -57,6 +57,7 @@ class FormulaParser:
 
     def __init__(self):
         """Initialize the parser with grammar definition."""
+        self._formula_cache = {}  # Store original formulas since ParseResults doesn't allow attributes
         # Define basic tokens
         identifier = Word(alphas + "_", alphanums + "_")
         lparen = Literal("(")
@@ -78,10 +79,11 @@ class FormulaParser:
 
         # Function call: FUNC(arg1, arg2, ...)
         # Group the function name and arguments together
+        # Use Optional to allow zero-argument calls like BLANK()
         function_call = Group(
             identifier("function") +
             lparen.suppress() +
-            Group(DelimitedList(expression))("args") +
+            Group(Optional(DelimitedList(expression)))("args") +
             rparen.suppress()
         )
 
@@ -105,67 +107,60 @@ class FormulaParser:
         """
         # Normalize: strip leading = and whitespace
         normalized = formula.lstrip('=').strip()
-        return self.grammar.parse_string(normalized, parse_all=False)
+        result = self.grammar.parse_string(normalized, parse_all=False)
+        cache_id = id(result)
+        self._formula_cache[cache_id] = normalized
+        return result
 
     def extract_function_calls(self, ast: ParseResults, named_functions: Set[str]) -> List[Dict[str, Any]]:
-        """
-        Recursively extract all function calls to our named functions.
-
-        Args:
-            ast: Parsed AST from parse()
-            named_functions: Set of function names we recognize
-
-        Returns:
-            List of dicts with {name, args, depth} for each call, sorted innermost-first
-        """
+        """Extract function calls by looking at the AST node dict."""
         calls = []
 
+        # Try to extract from AST first
         def walk(node, depth=0):
-            """Recursively walk the AST."""
             if isinstance(node, ParseResults):
-                # If it's a wrapper with one item, unwrap it
-                if len(node) == 1 and isinstance(node[0], ParseResults):
-                    walk(node[0], depth)
-                    return
-
-                # Check if it's a list-like structure (function call)
-                if len(node) >= 2 and isinstance(node[0], str):
-                    # First element is the function name, second is args list
-                    func_name = node[0]
+                node_dict = node.asDict()
+                # Check if it's a function call node
+                if "function" in node_dict:
+                    func_name = node_dict["function"]
                     if func_name in named_functions:
-                        args = list(node[1]) if len(node) > 1 else []
-                        calls.append({
-                            'name': func_name,
-                            'args': args,
-                            'depth': depth,
-                            'node': node
-                        })
-                    # Recurse into arguments
-                    if len(node) > 1 and isinstance(node[1], (list, ParseResults)):
-                        for arg in node[1]:
+                        args = node_dict.get("args", [])
+                        calls.append({"name": func_name, "args": args, "depth": depth, "node": node})
+                    # Walk the args
+                    if "args" in node_dict:
+                        for arg in node_dict["args"]:
                             walk(arg, depth + 1)
-                # Also try the named results approach
-                elif hasattr(node, 'asDict'):
-                    node_dict = node.asDict()
-                    if 'function' in node_dict:
-                        func_name = node_dict['function']
-                        if func_name in named_functions:
-                            calls.append({
-                                'name': func_name,
-                                'args': node_dict.get('args', []),
-                                'depth': depth,
-                                'node': node
-                            })
-                        if 'args' in node_dict:
-                            for arg in node_dict['args']:
-                                walk(arg, depth + 1)
-            elif isinstance(node, list):
+                else:
+                    # Not a function call, walk children
+                    for item in node:
+                        walk(item, depth)
+            elif isinstance(node, dict):
+                # Handle dict representation (from nested ParseResults converted to dict)
+                if "function" in node:
+                    func_name = node["function"]
+                    if func_name in named_functions:
+                        args = node.get("args", [])
+                        calls.append({"name": func_name, "args": args, "depth": depth, "node": None})
+                    # Walk the args
+                    if "args" in node:
+                        for arg in node["args"]:
+                            walk(arg, depth + 1)
+            elif isinstance(node, (list, tuple)):
                 for item in node:
                     walk(item, depth)
 
         walk(ast)
-        # Sort by depth (innermost first for expansion)
-        return sorted(calls, key=lambda c: c['depth'], reverse=True)
+
+        # If pyparsing failed to parse completely, use regex fallback
+        if not calls:
+            formula = self._formula_cache.get(id(ast), "") if hasattr(self, "_formula_cache") else ""
+            if formula:
+                for func_name in named_functions:
+                    if re.search(r"\b" + re.escape(func_name) + r"\s*\(", formula):
+                        calls.append({"name": func_name, "args": [], "depth": 0, "node": None})
+
+        return sorted(calls, key=lambda c: c["depth"], reverse=True)
+
 
     @staticmethod
     def reconstruct_call(func_name: str, args: List) -> str:
@@ -409,6 +404,57 @@ def substitute_arguments(
     return result
 
 
+
+def expand_argument(
+    arg: Any,
+    all_formulas: Dict[str, Dict[str, Any]],
+    parser: FormulaParser,
+    expanded_cache: Dict[str, str]
+) -> str:
+    if isinstance(arg, str):
+        return arg
+    if isinstance(arg, tuple) and len(arg) == 2 and arg[0] == "__STRING_LITERAL__":
+        return f"{chr(34)}{arg[1]}{chr(34)}"
+    if isinstance(arg, (int, float)):
+        return str(arg)
+    # Handle dict representation (from nested ParseResults converted to dict)
+    if isinstance(arg, dict) and "function" in arg:
+        func_name = arg["function"]
+        inner_args = arg.get("args", [])
+        if func_name in all_formulas:
+            func_def = all_formulas[func_name]
+            func_expanded = expand_formula(func_def, all_formulas, parser, expanded_cache)
+            func_expanded_stripped = func_expanded.lstrip("=").strip()
+            # Recursively expand inner args
+            expanded_inner_args = [expand_argument(a, all_formulas, parser, expanded_cache) for a in inner_args]
+            substituted = substitute_arguments(
+                func_expanded_stripped,
+                func_def["parameters"],
+                expanded_inner_args
+            )
+            return f"({substituted})"
+        else:
+            return FormulaParser.reconstruct_call(func_name, inner_args)
+    if isinstance(arg, ParseResults) and hasattr(arg, "asDict"):
+        node_dict = arg.asDict()
+        if "function" in node_dict:
+            func_name = node_dict["function"]
+            inner_args = node_dict.get("args", [])
+            if func_name in all_formulas:
+                func_def = all_formulas[func_name]
+                func_expanded = expand_formula(func_def, all_formulas, parser, expanded_cache)
+                func_expanded_stripped = func_expanded.lstrip("=").strip()
+                substituted = substitute_arguments(
+                    func_expanded_stripped,
+                    func_def["parameters"],
+                    inner_args
+                )
+                return f"({substituted})"
+            else:
+                return FormulaParser.reconstruct_call(func_name, inner_args)
+    return str(arg)
+
+
 def expand_formula(
     formula_data: Dict[str, Any],
     all_formulas: Dict[str, Dict[str, Any]],
@@ -435,6 +481,7 @@ def expand_formula(
 
     # Strip comments from formula before processing
     formula_text = strip_comments(formula_data['formula']).strip()
+    original_formula_text = formula_text  # Save for validation
     named_functions = set(all_formulas.keys())
 
     try:
@@ -450,14 +497,24 @@ def expand_formula(
         expanded_cache[name] = formula_text
         return formula_text
 
-    # Expand each call (innermost first due to depth sorting)
+    # Only process top-level calls (depth=0)
+    # Nested calls will be expanded when their parent is expanded via expand_argument
+    top_level_calls = [c for c in calls if c['depth'] == 0]
+
+    # Expand each top-level call
     result = formula_text
-    for call in calls:
+    for call in top_level_calls:
         func_name = call['name']
         args = call['args']
 
         # Get function definition
         func_def = all_formulas[func_name]
+
+        # First, expand all arguments that are function calls
+        expanded_args = []
+        for arg in args:
+            expanded_arg = expand_argument(arg, all_formulas, parser, expanded_cache)
+            expanded_args.append(expanded_arg)
 
         # Recursively expand the called function first
         func_expanded = expand_formula(func_def, all_formulas, parser, expanded_cache)
@@ -469,7 +526,7 @@ def expand_formula(
         substituted = substitute_arguments(
             func_expanded_stripped,
             func_def['parameters'],
-            args
+            expanded_args
         )
 
         # Replace function call in result
@@ -493,6 +550,15 @@ def expand_formula(
         formula_starters = ['LET(', 'LAMBDA(', 'BYROW(', 'BYCOL(', 'MAKEARRAY(', 'FILTER(', 'DENSIFY(']
         if any(result.startswith(starter) for starter in formula_starters):
             result = '=' + result
+
+    # Validation: If we had dependencies but the result equals the original formula,
+    # the parser failed to expand the function calls
+    if calls and result.lstrip('=').strip() == original_formula_text.lstrip('=').strip():
+        func_names = ', '.join(sorted({c['name'] for c in calls}))
+        raise ValidationError(
+            f"{name}: Formula calls {func_names} but expansion failed. "
+            f"Parser may have failed to parse zero-argument calls or complex syntax."
+        )
 
     expanded_cache[name] = result
     return result

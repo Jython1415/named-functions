@@ -377,7 +377,7 @@ v1.0.6 Removes empty or incomplete rows and columns from sparse data. Use mode t
 **Formula**
 
 ```
-LET(
+=LET(
   actual_mode, IF(OR(mode="", mode=0), "both", LOWER(TRIM(mode))),
   mode_parts, SPLIT(actual_mode, "-"),
   dimension, INDEX(mode_parts, 1),
@@ -398,7 +398,7 @@ LET(
             FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((IFERROR(LEN(TRIM(r)) > 0, TRUE)) * 1) >= threshold))),
             FILTER(range, BYROW(range, LAMBDA(r, COUNTA(r) >= threshold)))
           ),
-          IF(ISNA(ROWS(result)), BLANK(), result)
+          IF(ISNA(ROWS(result)), (IF(,,)), result)
         ),
         range
       ),
@@ -411,7 +411,7 @@ LET(
             FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((IFERROR(LEN(TRIM(c)) > 0, TRUE)) * 1) >= threshold))),
             FILTER(transposed, BYROW(transposed, LAMBDA(c, COUNTA(c) >= threshold)))
           ),
-          IF(ISNA(ROWS(result)), BLANK(), TRANSPOSE(result))
+          IF(ISNA(ROWS(result)), (IF(,,)), TRANSPOSE(result))
         ),
         rows_filtered
       ),
@@ -493,7 +493,7 @@ v2.0.0 Removes rows that are entirely blank from sparse data. This is a convenie
             FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((IFERROR(LEN(TRIM(r)) > 0, TRUE)) * 1) >= threshold))),
             FILTER(range, BYROW(range, LAMBDA(r, COUNTA(r) >= threshold)))
           ),
-          IF(ISNA(ROWS(result)), BLANK(), result)
+          IF(ISNA(ROWS(result)), (IF(,,)), result)
         ),
         range
       ),
@@ -506,7 +506,7 @@ v2.0.0 Removes rows that are entirely blank from sparse data. This is a convenie
             FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((IFERROR(LEN(TRIM(c)) > 0, TRUE)) * 1) >= threshold))),
             FILTER(transposed, BYROW(transposed, LAMBDA(c, COUNTA(c) >= threshold)))
           ),
-          IF(ISNA(ROWS(result)), BLANK(), TRANSPOSE(result))
+          IF(ISNA(ROWS(result)), (IF(,,)), TRANSPOSE(result))
         ),
         rows_filtered
       ),
@@ -553,7 +553,7 @@ v1.1.0 Converts empty strings to blank cells. Accepts either a single value or a
 **Formula**
 
 ```
-MAP(input, LAMBDA(v, IF(v = "", BLANK(), v)))
+MAP(input, LAMBDA(v, IF(v = "", (IF(,,)), v)))
 ```
 
 #### input
@@ -632,7 +632,7 @@ v1.0.0 Filters rows and columns based on error status. Use mode to control which
 **Formula**
 
 ```
-LET(
+=LET(
   actual_mode, IF(OR(mode="", mode=0), "both", LOWER(TRIM(mode))),
   mode_parts, SPLIT(actual_mode, "-"),
   dimension, INDEX(mode_parts, 1),
@@ -650,10 +650,10 @@ LET(
         LET(
           num_cols, COLUMNS(range),
           IF(has_any,
-            IFNA(FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((ISERROR(r)) * 1) > 0))), BLANK()),
+            IFNA(FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((ISERROR(r)) * 1) > 0))), (IF(,,))),
             IF(has_all,
-              IFNA(FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((ISERROR(r)) * 1) = num_cols))), BLANK()),
-              IFNA(FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((ISERROR(r)) * 1) = 0))), BLANK())
+              IFNA(FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((ISERROR(r)) * 1) = num_cols))), (IF(,,))),
+              IFNA(FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((ISERROR(r)) * 1) = 0))), (IF(,,)))
             )
           )
         ),
@@ -666,10 +666,10 @@ LET(
           num_rows, ROWS(rows_filtered),
           TRANSPOSE(
             IF(has_any,
-              IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((ISERROR(c)) * 1) > 0))), BLANK()),
+              IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((ISERROR(c)) * 1) > 0))), (IF(,,))),
               IF(has_all,
-                IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((ISERROR(c)) * 1) = num_rows))), BLANK()),
-                IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((ISERROR(c)) * 1) = 0))), BLANK())
+                IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((ISERROR(c)) * 1) = num_rows))), (IF(,,))),
+                IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((ISERROR(c)) * 1) = 0))), (IF(,,)))
               )
             )
           )
@@ -1000,7 +1000,18 @@ v1.0.0 Stacks two arrays horizontally, padding shorter arrays with blank cells t
 **Formula**
 
 ```
-HSTACKFILL(array1, array2, BLANK())
+=LET(
+  rows1, ROWS(array1),
+  rows2, ROWS(array2),
+  max_rows, MAX(rows1, rows2),
+  padded1, IF(rows1 < max_rows,
+              VSTACK(array1, MAKEARRAY(max_rows - rows1, COLUMNS(array1), LAMBDA(r, c, (IF(,,))))),
+              array1),
+  padded2, IF(rows2 < max_rows,
+              VSTACK(array2, MAKEARRAY(max_rows - rows2, COLUMNS(array2), LAMBDA(r, c, (IF(,,))))),
+              array2),
+  HSTACK(padded1, padded2)
+)
 ```
 
 #### array1
@@ -1221,37 +1232,9 @@ v1.0.0 Excludes specified columns from a range. This is the negation of CHOOSECO
 **Formula**
 
 ```
-=LET(
+LET(
   transposed, TRANSPOSE(range),
-  result, (LET(
-  total_rows, ROWS(transposed),
-
-  
-  rows_to_omit, FLATTEN(col_nums),
-
-  
-  normalized_omit, MAKEARRAY(ROWS(rows_to_omit), COLUMNS(rows_to_omit), LAMBDA(r, c,
-    LET(
-      idx, INDEX(rows_to_omit, r, c),
-      IF(idx < 0, total_rows + idx + 1, idx)
-    )
-  )),
-
-  
-  all_rows, SEQUENCE(total_rows, 1),
-
-  
-  rows_to_keep, FILTER(all_rows, ISNA(MATCH(all_rows, FLATTEN(normalized_omit), 0))),
-
-  
-  _validate, IF(ROWS(rows_to_keep) = 0,
-    ERROR("Cannot omit all rows from transposed"),
-    TRUE
-  ),
-
-  
-  CHOOSEROWS(transposed, rows_to_keep)
-)),
+  result, OMITROWS(transposed, col_nums),
   TRANSPOSE(result)
 )
 ```
@@ -1870,7 +1853,18 @@ v1.0.0 Stacks two arrays vertically, padding narrower arrays with blank cells to
 **Formula**
 
 ```
-VSTACKFILL(array1, array2, BLANK())
+=LET(
+  cols1, COLUMNS(array1),
+  cols2, COLUMNS(array2),
+  max_cols, MAX(cols1, cols2),
+  padded1, IF(cols1 < max_cols,
+              HSTACK(array1, MAKEARRAY(ROWS(array1), max_cols - cols1, LAMBDA(r, c, (IF(,,))))),
+              array1),
+  padded2, IF(cols2 < max_cols,
+              HSTACK(array2, MAKEARRAY(ROWS(array2), max_cols - cols2, LAMBDA(r, c, (IF(,,))))),
+              array2),
+  VSTACK(padded1, padded2)
+)
 ```
 
 #### array1
