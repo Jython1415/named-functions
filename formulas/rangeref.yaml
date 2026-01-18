@@ -1,0 +1,27 @@
+name: RANGEREF
+version: 1.0.0
+
+description: >
+  Converts a range reference to its A1 notation string representation.
+  Returns the range in A1 notation (e.g., "A1:B10") for the given range.
+  For single-cell ranges, returns just the cell reference (e.g., "A1" instead of "A1:A1").
+  This is useful for generating dynamic range references, creating hyperlinks, or building
+  formulas programmatically.
+
+parameters:
+  - name: range
+    description: The range to convert to A1 notation
+    example: "A1:B10"
+
+formula: |
+  LAMBDA(range,
+    LET(
+      topLeftCell, ADDRESS(ROW(range), COLUMN(range), 4),
+      bottomRightCell, ADDRESS(ROW(range) + ROWS(range) - 1, COLUMN(range) + COLUMNS(range) - 1, 4),
+      IF(
+        topLeftCell = bottomRightCell,
+        topLeftCell,
+        topLeftCell & ":" & bottomRightCell
+      )
+    )
+  )
