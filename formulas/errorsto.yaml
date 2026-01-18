@@ -1,0 +1,20 @@
+name: ERRORSTO
+version: 1.0.0
+
+description: >
+  Replaces error cells with a specified value while preserving non-error cells.
+  Accepts either a single value or a range. When given a range, automatically
+  applies the replacement to all cells using MAP. Useful for error handling
+  and data cleaning where errors need to be replaced with a default value.
+
+parameters:
+  - name: input
+    description: Single value or range to process (error cells will be replaced)
+    example: "A1:B10"
+
+  - name: replacement
+    description: Value to use in place of errors
+    example: 0
+
+formula: |
+  MAP(input, LAMBDA(v, IF(ISERROR(v), replacement, v)))

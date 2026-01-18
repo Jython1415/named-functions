@@ -20,9 +20,11 @@ A collection of named Excel/Google Sheets formulas using LET and LAMBDA function
 - **[EMPTYTOBLANK](#emptytoblank)** - Converts empty strings to blank cells. Accepts either a single value or a range. When given a range, automatically applies the conversion to all cells using MAP. Useful for cleaning data where empty strings should be represented as true blanks.
 - **[ERROR](#error)** - Displays a custom error message as an #N/A error with a configurable tooltip. Uses an empty array trick to ensure the error always triggers, regardless of cell contents. Useful for validation and user-friendly error reporting.
 - **[ERRORFILTER](#errorfilter)** - Filters rows and columns based on error status. Use mode to control which dimensions to process and which error conditions to filter for. Useful for data validation, debugging, and cleaning error-prone data.
+- **[ERRORSTO](#errorsto)** - Replaces error cells with a specified value while preserving non-error cells. Accepts either a single value or a range. When given a range, automatically applies the replacement to all cells using MAP. Useful for error handling and data cleaning where errors need to be replaced with a default value.
 - **[GROUPBY](#groupby)** - Groups data by one or more columns and applies custom aggregation logic via LAMBDA functions, implementing SQL-like GROUP BY functionality. Does not handle headers - provide data without header row.
 - **[HEADERS](#headers)** - Extracts the header row (first row) from a data range. This is useful for separating headers from data, especially when working with structured data.
 - **[ISBLANKLIKE](#isblanklike)** - Checks if a cell is either truly blank (ISBLANK) or an empty string (""). This is useful for identifying cells that appear empty but may contain empty strings from formulas or data imports. Returns TRUE if the cell is blank-like, FALSE otherwise.
+- **[NONERRORSTO](#nonerrorsto)** - Replaces non-error cells with a specified value while preserving error cells. Accepts either a single value or a range. When given a range, automatically applies the replacement to all cells using MAP. Useful for masking valid data while keeping errors visible for debugging or validation purposes.
 - **[OMITCOLS](#omitcols)** - Excludes specified columns from a range. This is the negation of CHOOSECOLS - instead of selecting columns to keep, it selects columns to remove.
 - **[OMITROWS](#omitrows)** - Excludes specified rows from a range. This is the negation of CHOOSEROWS - instead of selecting rows to keep, it selects rows to remove.
 - **[RANGEREF](#rangeref)** - Converts a range reference to its A1 notation string representation. Returns the range in A1 notation (e.g., "A1:B10") for the given range. For single-cell ranges, returns just the cell reference (e.g., "A1" instead of "A1:A1"). This is useful for generating dynamic range references, creating hyperlinks, or building formulas programmatically.
@@ -708,6 +710,54 @@ rows-any
 </details>
 
 <details>
+<summary><strong>ERRORSTO</strong></summary>
+
+### ERRORSTO
+
+**Description**
+
+```
+v1.0.0 Replaces error cells with a specified value while preserving non-error cells. Accepts either a single value or a range. When given a range, automatically applies the replacement to all cells using MAP. Useful for error handling and data cleaning where errors need to be replaced with a default value.
+```
+
+**Parameters**
+
+```
+1. input
+2. replacement
+```
+
+**Formula**
+
+```
+MAP(input, LAMBDA(v, IF(ISERROR(v), replacement, v)))
+```
+
+#### input
+
+**Description:**
+
+```
+Single value or range to process (error cells will be replaced)
+```
+
+**Example:**
+
+```
+A1:B10
+```
+
+#### replacement
+
+**Description:**
+
+```
+Value to use in place of errors
+```
+
+</details>
+
+<details>
 <summary><strong>GROUPBY</strong></summary>
 
 ### GROUPBY
@@ -960,6 +1010,54 @@ The cell to check for blank-like condition
 
 ```
 A1
+```
+
+</details>
+
+<details>
+<summary><strong>NONERRORSTO</strong></summary>
+
+### NONERRORSTO
+
+**Description**
+
+```
+v1.0.0 Replaces non-error cells with a specified value while preserving error cells. Accepts either a single value or a range. When given a range, automatically applies the replacement to all cells using MAP. Useful for masking valid data while keeping errors visible for debugging or validation purposes.
+```
+
+**Parameters**
+
+```
+1. input
+2. replacement
+```
+
+**Formula**
+
+```
+MAP(input, LAMBDA(v, IF(ISERROR(v), v, replacement)))
+```
+
+#### input
+
+**Description:**
+
+```
+Single value or range to process (non-error cells will be replaced)
+```
+
+**Example:**
+
+```
+A1:B10
+```
+
+#### replacement
+
+**Description:**
+
+```
+Value to use in place of non-errors
 ```
 
 </details>
