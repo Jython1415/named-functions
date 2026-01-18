@@ -14,14 +14,12 @@ parameters:
     example: "A1:B10"
 
 formula: |
-  LAMBDA(range,
-    LET(
-      topLeftCell, ADDRESS(ROW(range), COLUMN(range), 4),
-      bottomRightCell, ADDRESS(ROW(range) + ROWS(range) - 1, COLUMN(range) + COLUMNS(range) - 1, 4),
-      IF(
-        topLeftCell = bottomRightCell,
-        topLeftCell,
-        topLeftCell & ":" & bottomRightCell
-      )
+  LET(
+    topLeftCell, ADDRESS(ROW(range), COLUMN(range), 4),
+    bottomRightCell, ADDRESS(ROW(range) + ROWS(range) - 1, COLUMN(range) + COLUMNS(range) - 1, 4),
+    IF(
+      topLeftCell = bottomRightCell,
+      topLeftCell,
+      topLeftCell & ":" & bottomRightCell
     )
   )

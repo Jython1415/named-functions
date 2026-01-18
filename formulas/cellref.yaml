@@ -13,6 +13,4 @@ parameters:
     example: "N6"
 
 formula: |
-  LAMBDA(cell,
-    ADDRESS(ROW(cell), COLUMN(cell), 4)
-  )
+  ADDRESS(ROW(cell), COLUMN(cell), 4)

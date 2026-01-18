@@ -15,6 +15,4 @@ parameters:
     example: "A1"
 
 formula: |
-  LAMBDA(delimiter, contents,
-    "<" & delimiter & ">" & contents & "</" & delimiter & ">"
-  )
+  "<" & delimiter & ">" & contents & "</" & delimiter & ">"

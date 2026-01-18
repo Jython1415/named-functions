@@ -32,48 +32,46 @@ parameters:
     example: 'NA()'
 
 formula: |
-  LAMBDA(text, delimiter, instance_num, match_mode, match_end, if_not_found,
-    LET(
-      // Validate instance_num is not 0
-      IF(instance_num = 0, NA(),
-        // Special case: empty delimiter
-        IF(delimiter = "",
-          IF(instance_num > 0, text, ""),
-          LET(
-            // Handle case sensitivity for search
-            search_text, IF(match_mode = 1, UPPER(text), text),
-            search_delim, IF(match_mode = 1, UPPER(delimiter), delimiter),
+  LET(
+    // Validate instance_num is not 0
+    IF(instance_num = 0, NA(),
+      // Special case: empty delimiter
+      IF(delimiter = "",
+        IF(instance_num > 0, text, ""),
+        LET(
+          // Handle case sensitivity for search
+          search_text, IF(match_mode = 1, UPPER(text), text),
+          search_delim, IF(match_mode = 1, UPPER(delimiter), delimiter),
 
-            // Count total occurrences of delimiter
-            total_count, (LEN(search_text) - LEN(SUBSTITUTE(search_text, search_delim, ""))) / LEN(search_delim),
+          // Count total occurrences of delimiter
+          total_count, (LEN(search_text) - LEN(SUBSTITUTE(search_text, search_delim, ""))) / LEN(search_delim),
 
-            // Convert negative instance_num to positive (count from right)
-            positive_inst, IF(instance_num < 0, total_count + instance_num + 1, instance_num),
+          // Convert negative instance_num to positive (count from right)
+          positive_inst, IF(instance_num < 0, total_count + instance_num + 1, instance_num),
 
-            // Check if the requested instance exists
-            found, positive_inst > 0 AND positive_inst <= total_count,
+          // Check if the requested instance exists
+          found, positive_inst > 0 AND positive_inst <= total_count,
 
-            IF(found,
-              LET(
-                // Find position of nth delimiter using SUBSTITUTE trick
-                // Replace only the nth occurrence with a unique marker
-                marker, "§§§TEXTAFTER§§§",
-                text_with_marker, SUBSTITUTE(search_text, search_delim, marker, positive_inst),
-                delim_pos, FIND(marker, text_with_marker),
+          IF(found,
+            LET(
+              // Find position of nth delimiter using SUBSTITUTE trick
+              // Replace only the nth occurrence with a unique marker
+              marker, "§§§TEXTAFTER§§§",
+              text_with_marker, SUBSTITUTE(search_text, search_delim, marker, positive_inst),
+              delim_pos, FIND(marker, text_with_marker),
 
-                // Position after the delimiter in original text
-                after_pos, delim_pos + LEN(delimiter),
+              // Position after the delimiter in original text
+              after_pos, delim_pos + LEN(delimiter),
 
-                // Extract and return text after delimiter
-                MID(text, after_pos, LEN(text))
-              ),
-              // Delimiter not found - handle based on match_end
-              IF(match_end = 1,
-                // With match_end=1, treat end of text as delimiter
-                IF(instance_num > 0, "", text),
-                // Return custom error value
-                if_not_found
-              )
+              // Extract and return text after delimiter
+              MID(text, after_pos, LEN(text))
+            ),
+            // Delimiter not found - handle based on match_end
+            IF(match_end = 1,
+              // With match_end=1, treat end of text as delimiter
+              IF(instance_num > 0, "", text),
+              // Return custom error value
+              if_not_found
             )
           )
         )
