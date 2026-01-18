@@ -23,6 +23,8 @@ A collection of named Excel/Google Sheets formulas using LET and LAMBDA function
 - **[ERRORSTO](#errorsto)** - Replaces error cells with a specified value while preserving non-error cells. Accepts either a single value or a range. When given a range, automatically applies the replacement to all cells using MAP. Useful for error handling and data cleaning where errors need to be replaced with a default value.
 - **[GROUPBY](#groupby)** - Groups data by one or more columns and applies custom aggregation logic via LAMBDA functions, implementing SQL-like GROUP BY functionality. Does not handle headers - provide data without header row.
 - **[HEADERS](#headers)** - Extracts the header row (first row) from a data range. This is useful for separating headers from data, especially when working with structured data.
+- **[HSTACKBLANK](#hstackblank)** - Stacks two arrays horizontally, padding shorter arrays with blank cells to match dimensions. Convenience wrapper for HSTACKFILL using BLANK().
+- **[HSTACKFILL](#hstackfill)** - Stacks two arrays horizontally, padding shorter arrays with a specified fill value to match dimensions. Prevents #N/A errors from mismatched heights.
 - **[ISBLANKLIKE](#isblanklike)** - Checks if a cell is either truly blank (ISBLANK) or an empty string (""). This is useful for identifying cells that appear empty but may contain empty strings from formulas or data imports. Returns TRUE if the cell is blank-like, FALSE otherwise.
 - **[NONERRORSTO](#nonerrorsto)** - Replaces non-error cells with a specified value while preserving error cells. Accepts either a single value or a range. When given a range, automatically applies the replacement to all cells using MAP. Useful for masking valid data while keeping errors visible for debugging or validation purposes.
 - **[OMITCOLS](#omitcols)** - Excludes specified columns from a range. This is the negation of CHOOSECOLS - instead of selecting columns to keep, it selects columns to remove.
@@ -31,6 +33,8 @@ A collection of named Excel/Google Sheets formulas using LET and LAMBDA function
 - **[SUBSTITUTEMULTI](#substitutemulti)** - Applies multiple SUBSTITUTE operations sequentially using a two-column mapping range. Substitutions are applied in row order, with later substitutions operating on the results of earlier ones. This enables powerful multi-stage text transformations.
 - **[TEXTAFTER](#textafter)** - Returns text that appears after a specified delimiter. Supports forward/backward search, case-sensitive/insensitive matching, and customizable error handling. Replicates Excel's TEXTAFTER function for Google Sheets.
 - **[UNPIVOT](#unpivot)** - Transforms wide-format data into long-format (tidy data) by unpivoting specified columns into attribute-value pairs.
+- **[VSTACKBLANK](#vstackblank)** - Stacks two arrays vertically, padding narrower arrays with blank cells to match dimensions. Convenience wrapper for VSTACKFILL using BLANK().
+- **[VSTACKFILL](#vstackfill)** - Stacks two arrays vertically, padding narrower arrays with a specified fill value to match dimensions. Prevents #N/A errors from mismatched widths.
 - **[WRAP](#wrap)** - Wraps content with opening and closing delimiters. Useful for generating HTML/XML tags, brackets, or any paired delimiter pattern around text or cell values.
 
 ### Detailed Formulas
@@ -976,6 +980,140 @@ Number of header rows to extract (default: 1). Use this when you have multi-row 
 </details>
 
 <details>
+<summary><strong>HSTACKBLANK</strong></summary>
+
+### HSTACKBLANK
+
+**Description**
+
+```
+v1.0.0 Stacks two arrays horizontally, padding shorter arrays with blank cells to match dimensions. Convenience wrapper for HSTACKFILL using BLANK().
+```
+
+**Parameters**
+
+```
+1. array1
+2. array2
+```
+
+**Formula**
+
+```
+HSTACKFILL(array1, array2, BLANK())
+```
+
+#### array1
+
+**Description:**
+
+```
+First array to stack
+```
+
+**Example:**
+
+```
+A1:C10
+```
+
+#### array2
+
+**Description:**
+
+```
+Second array to stack
+```
+
+**Example:**
+
+```
+E1:F5
+```
+
+</details>
+
+<details>
+<summary><strong>HSTACKFILL</strong></summary>
+
+### HSTACKFILL
+
+**Description**
+
+```
+v1.0.0 Stacks two arrays horizontally, padding shorter arrays with a specified fill value to match dimensions. Prevents #N/A errors from mismatched heights.
+```
+
+**Parameters**
+
+```
+1. array1
+2. array2
+3. fill_value
+```
+
+**Formula**
+
+```
+LET(
+  rows1, ROWS(array1),
+  rows2, ROWS(array2),
+  max_rows, MAX(rows1, rows2),
+  padded1, IF(rows1 < max_rows,
+              VSTACK(array1, MAKEARRAY(max_rows - rows1, COLUMNS(array1), LAMBDA(r, c, fill_value))),
+              array1),
+  padded2, IF(rows2 < max_rows,
+              VSTACK(array2, MAKEARRAY(max_rows - rows2, COLUMNS(array2), LAMBDA(r, c, fill_value))),
+              array2),
+  HSTACK(padded1, padded2)
+)
+```
+
+#### array1
+
+**Description:**
+
+```
+First array to stack
+```
+
+**Example:**
+
+```
+A1:C10
+```
+
+#### array2
+
+**Description:**
+
+```
+Second array to stack
+```
+
+**Example:**
+
+```
+E1:F5
+```
+
+#### fill_value
+
+**Description:**
+
+```
+Value to use for padding cells (use BLANK() for empty cells)
+```
+
+**Example:**
+
+```
+BLANK()
+```
+
+</details>
+
+<details>
 <summary><strong>ISBLANKLIKE</strong></summary>
 
 ### ISBLANKLIKE
@@ -1707,6 +1845,140 @@ Specifies which columns to unpivot. Can be array of strings (column names) or ar
 
 ```
 Value to replace empty cells with in the value column only. Default keeps blanks as-is. Different from filtering (use FILTER() wrapper to remove rows).
+```
+
+</details>
+
+<details>
+<summary><strong>VSTACKBLANK</strong></summary>
+
+### VSTACKBLANK
+
+**Description**
+
+```
+v1.0.0 Stacks two arrays vertically, padding narrower arrays with blank cells to match dimensions. Convenience wrapper for VSTACKFILL using BLANK().
+```
+
+**Parameters**
+
+```
+1. array1
+2. array2
+```
+
+**Formula**
+
+```
+VSTACKFILL(array1, array2, BLANK())
+```
+
+#### array1
+
+**Description:**
+
+```
+First array to stack
+```
+
+**Example:**
+
+```
+A1:C10
+```
+
+#### array2
+
+**Description:**
+
+```
+Second array to stack
+```
+
+**Example:**
+
+```
+E1:F5
+```
+
+</details>
+
+<details>
+<summary><strong>VSTACKFILL</strong></summary>
+
+### VSTACKFILL
+
+**Description**
+
+```
+v1.0.0 Stacks two arrays vertically, padding narrower arrays with a specified fill value to match dimensions. Prevents #N/A errors from mismatched widths.
+```
+
+**Parameters**
+
+```
+1. array1
+2. array2
+3. fill_value
+```
+
+**Formula**
+
+```
+LET(
+  cols1, COLUMNS(array1),
+  cols2, COLUMNS(array2),
+  max_cols, MAX(cols1, cols2),
+  padded1, IF(cols1 < max_cols,
+              HSTACK(array1, MAKEARRAY(ROWS(array1), max_cols - cols1, LAMBDA(r, c, fill_value))),
+              array1),
+  padded2, IF(cols2 < max_cols,
+              HSTACK(array2, MAKEARRAY(ROWS(array2), max_cols - cols2, LAMBDA(r, c, fill_value))),
+              array2),
+  VSTACK(padded1, padded2)
+)
+```
+
+#### array1
+
+**Description:**
+
+```
+First array to stack
+```
+
+**Example:**
+
+```
+A1:C10
+```
+
+#### array2
+
+**Description:**
+
+```
+Second array to stack
+```
+
+**Example:**
+
+```
+E1:F5
+```
+
+#### fill_value
+
+**Description:**
+
+```
+Value to use for padding cells (use BLANK() for empty cells)
+```
+
+**Example:**
+
+```
+BLANK()
 ```
 
 </details>

@@ -1,0 +1,33 @@
+name: VSTACKFILL
+version: 1.0.0
+
+description: >
+  Stacks two arrays vertically, padding narrower arrays with a specified fill value
+  to match dimensions. Prevents #N/A errors from mismatched widths.
+
+parameters:
+  - name: array1
+    description: First array to stack
+    example: "A1:C10"
+
+  - name: array2
+    description: Second array to stack
+    example: "E1:F5"
+
+  - name: fill_value
+    description: Value to use for padding cells (use BLANK() for empty cells)
+    example: "BLANK()"
+
+formula: |
+  LET(
+    cols1, COLUMNS(array1),
+    cols2, COLUMNS(array2),
+    max_cols, MAX(cols1, cols2),
+    padded1, IF(cols1 < max_cols,
+                HSTACK(array1, MAKEARRAY(ROWS(array1), max_cols - cols1, LAMBDA(r, c, fill_value))),
+                array1),
+    padded2, IF(cols2 < max_cols,
+                HSTACK(array2, MAKEARRAY(ROWS(array2), max_cols - cols2, LAMBDA(r, c, fill_value))),
+                array2),
+    VSTACK(padded1, padded2)
+  )
