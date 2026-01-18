@@ -22,7 +22,7 @@ from typing import Dict, List, Any, Set, Tuple
 import yaml
 from pyparsing import (
     Forward, Word, alphas, alphanums, QuotedString,
-    Literal, Group, delimitedList, ParseException,
+    Literal, Group, DelimitedList, ParseException,
     ParseResults, pyparsing_common, MatchFirst
 )
 
@@ -66,8 +66,8 @@ class FormulaParser:
         # String literals (handle escaped quotes)
         # Wrap in a marker to preserve information that these were quoted
         string_literal = (
-            (QuotedString('"', escChar='\\') | QuotedString("'", escChar='\\'))
-            .setParseAction(lambda t: ('__STRING_LITERAL__', t[0]))
+            (QuotedString('"', esc_char='\\') | QuotedString("'", esc_char='\\'))
+            .set_parse_action(lambda t: ('__STRING_LITERAL__', t[0]))
         )
 
         # Numbers
@@ -81,7 +81,7 @@ class FormulaParser:
         function_call = Group(
             identifier("function") +
             lparen.suppress() +
-            Group(delimitedList(expression))("args") +
+            Group(DelimitedList(expression))("args") +
             rparen.suppress()
         )
 
@@ -105,7 +105,7 @@ class FormulaParser:
         """
         # Normalize: strip leading = and whitespace
         normalized = formula.lstrip('=').strip()
-        return self.grammar.parseString(normalized, parseAll=False)
+        return self.grammar.parse_string(normalized, parse_all=False)
 
     def extract_function_calls(self, ast: ParseResults, named_functions: Set[str]) -> List[Dict[str, Any]]:
         """
