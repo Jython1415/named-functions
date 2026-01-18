@@ -154,4 +154,4 @@ The composition system uses pyparsing to:
 - **README.md is auto-generated**: Edit `.readme-template.md` for static content changes
 - **Use `uv` not `pip`**: The project uses `uv` for dependency management
 - **Formula composition**: Formulas can reference other named functions - the system will automatically expand them
-- **GitHub API access**: If `gh` CLI is unavailable, check for `$GITHUB_TOKEN` with `[ -n "$GITHUB_TOKEN" ] && echo "✓ Available"` and use with `curl -H "Authorization: token $GITHUB_TOKEN" https://api.github.com/repos/...` for GitHub operations
+- **GitHub API access**: If `gh` CLI is unavailable, check for `$GITHUB_TOKEN` with `[ -n "$GITHUB_TOKEN" ] && echo "✓ Available"` and use with `curl -s -u "token:$GITHUB_TOKEN" https://api.github.com/repos/...` for GitHub operations. Note: Use the `-u` flag with `"token:$GITHUB_TOKEN"` format for basic authentication, NOT the Authorization header format.
