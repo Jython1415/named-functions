@@ -1544,6 +1544,12 @@ A1:B10
 Value to use in place of non-errors
 ```
 
+**Example:**
+
+```
+""
+```
+
 </details>
 
 <details>

@@ -14,7 +14,7 @@ parameters:
 
   - name: replacement
     description: Value to use in place of non-errors
-    example: ""
+    example: '""'
 
 formula: |
   MAP(input, LAMBDA(v, IF(ISERROR(v), v, replacement)))
