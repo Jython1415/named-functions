@@ -1,59 +1,46 @@
 # Named Functions Project
 
+## Documentation Constraints
+
+**CRITICAL**: This file must remain ≤250 lines to ensure it's maintainable and focused. Be prescriptive (how to work with this project), not descriptive (comprehensive documentation). Avoid:
+- Specific counts (formulas, tests, lines) that become stale
+- Detailed file listings discoverable via exploration
+- Redundancy with tests/CLAUDE.md, README.md, or inline docs
+- Troubleshooting details (errors are explicit and self-documenting)
+- Historical context (use git history and issues)
+
 ## Project Overview
 
-This repository contains a collection of named Google Sheets formulas using LET and LAMBDA functions. Formulas are defined in YAML files and the README is automatically generated from these definitions.
+This repository contains named Google Sheets formulas using LET and LAMBDA functions. Formulas are defined in YAML files and the README is automatically generated from these definitions.
+
+**Philosophy**: Robustness through fail-fast validation, comprehensive testing, and explicit failures over silent degradation.
 
 ## Project Structure
 
 ```
 named-functions/
-├── .github/
-│   └── workflows/
-│       └── generate-readme.yml    # GitHub Actions workflow for auto-generating README
-├── formulas/
-│   └── *.yaml                     # Individual formula definitions (e.g., unpivot.yaml)
-├── scripts/
-│   ├── generate_readme.py         # Python script to generate README from YAML files
-│   └── lint_formulas.py           # Python script to lint formula YAML files
-├── .readme-template.md            # Template for README generation
-├── README.md                      # Auto-generated documentation
-└── LICENSE                        # Project license
+├── .github/workflows/*.yml    # CI/CD: test.yml (quality gate), generate-readme.yml, claude.yml
+├── formulas/*.yaml            # Individual formula definitions
+├── scripts/*.py               # generate_readme.py (parser/expander), lint_formulas.py
+├── tests/                     # test_formula_parser.py, test_generate_readme_integration.py
+│   └── CLAUDE.md              # Testing philosophy and guidelines
+├── pytest.ini                 # Test configuration
+├── .readme-template.md        # Template for README generation
+└── README.md                  # Auto-generated (DO NOT EDIT DIRECTLY)
 ```
 
 ## Formula YAML Schema
 
-Each formula is defined in a `.yaml` file in the `formulas/` directory with the following structure:
-
-### Required Fields
-
-- **name** (string): The formula name (e.g., "UNPIVOT")
-- **version** (string/number): Version number (e.g., "1.0.0")
-- **description** (string): Brief description of what the formula does
-- **parameters** (list): Array of parameter objects, each containing:
-  - `name` (string): Parameter name
-  - `description` (string): Parameter description
-  - `example` (optional, example value recommended): Example value if applicable
-- **formula** (string): The actual Google Sheets formula using LET and LAMBDA
-
-### Example Structure
+Each `.yaml` file in `formulas/` has this structure:
 
 ```yaml
 name: FUNCTION_NAME
 version: 1.0.0
-
-description: >
-  Brief description of what the function does.
-
+description: Brief description of what the function does
 parameters:
   - name: param1
-    description: Description of first parameter
+    description: Description of parameter
     example: "A1:B10"
-
-  - name: param2
-    description: Description of second parameter
-    example: 2
-
 formula: |
   LET(
     variable, expression,
@@ -61,139 +48,168 @@ formula: |
   )
 ```
 
+**Key rules:**
+- No leading `=` (added during generation)
+- Comments supported: `/* block */` and `// line` (auto-stripped)
+- Formulas can call other named functions (auto-expanded)
+
 ## Development Workflow
 
-### Adding a New Formula
+### Adding or Modifying Formulas
 
-1. Create a new `.yaml` file in the `formulas/` directory following the schema above
-2. Run `uv run scripts/lint_formulas.py` to check for style violations
-3. Run `uv run scripts/generate_readme.py` to validate and update README
-4. Commit both the `.yaml` file and updated `README.md`
+**CRITICAL 4-STEP PROCESS** (all must succeed for CI to pass):
+
+```bash
+# 1. Lint formulas
+uv run scripts/lint_formulas.py
+
+# 2. Generate README (validates and expands formulas)
+uv run scripts/generate_readme.py
+
+# 3. Run test suite
+pytest tests/ -v
+
+# 4. Verify README updated, then commit BOTH files
+git diff README.md
+git add formulas/your-formula.yaml README.md
+git commit -m "Add/update YOUR_FORMULA"
+```
+
+**Always commit both**: The `.yaml` file AND the updated `README.md`
 
 ### CI/CD
 
-The GitHub Actions workflow (`.github/workflows/generate-readme.yml`) automatically runs linting and README generation on push/PR. See the workflow file for details.
+- **test.yml**: Primary quality gate (runs tests, linter, generator, verifies README up-to-date)
+- **generate-readme.yml**: Auto-commits README on main, comments on PRs if stale
+- **claude.yml**: Claude Code integration (restricted to git, uv, python commands)
 
-## Linter
+**Formula expansion failures block PR merges** - all formulas must be syntactically valid and fully expandable.
 
-The linter (`scripts/lint_formulas.py`) validates formula YAML files against style rules. It's extensible - new rules can be added easily.
+## Testing
 
-### Adding a New Lint Rule
+**Location**: `tests/` directory with pytest
 
-1. Open `scripts/lint_formulas.py`
-2. Create a new subclass of `LintRule` with your validation logic
-3. Add an instance to the `FormulaLinter.rules` list
-4. Test by running `uv run scripts/lint_formulas.py`
+**Run tests:**
+```bash
+pytest tests/ -v                                    # All tests
+pytest tests/ -v --cov=scripts --cov-report=term-missing  # With coverage
+```
 
+**Philosophy**: Integration-first approach testing public APIs and expected behavior, not implementation details.
+
+**For details**: See `tests/CLAUDE.md` for testing philosophy, adding tests, and known gaps.
+
+## Parser Architecture
+
+**Design**: 100% pyparsing grammar (no regex fallbacks) supporting all Google Sheets formula constructs.
+
+**Core principles:**
+- **Fail-fast**: Invalid syntax blocks CI/CD with explicit `ParseException`
+- **Single robust grammar**: No silent degradation or fallback mechanisms
+- **Explicit failures**: Grammar gaps surface immediately as errors
+
+**Supported**: Standard Google Sheets syntax including LET, LAMBDA, nested functions, empty arguments (`IF(,,)`), unary operators (`--condition`), arrays, ranges, operators.
+
+**Known limitation**: Google Sheets doubled-quote escaping (`""`) not yet supported - use backslash escaping (`\"`).
+
+**Implementation**: FormulaParser class in `scripts/generate_readme.py`
 
 ## Formula Composition
 
-Formulas can call other named functions, enabling powerful composition patterns. The system automatically:
-- Parses formulas to detect function calls
-- Expands references to other formulas with proper argument substitution
+Formulas can call other named functions - the system automatically:
+- Detects function calls and expands them recursively
+- Substitutes parameters with arguments (word-boundary matching)
 - Detects circular dependencies and reports errors
-- Generates fully expanded formulas in the README
+- Validates expansion succeeded (CI fails if formula unchanged)
 
-### Writing Composable Formulas
+**Example**: `DENSIFY(range, "rows-any")` expands to DENSIFY's full definition with arguments substituted.
 
-Simply call other named functions naturally in your formula:
+**Rule**: If expansion doesn't modify the formula, it's an error (catches parser bugs and missing dependencies).
 
-```yaml
-name: DENSIFYROWS
-version: 1.0.0
-description: Removes incomplete rows (convenience wrapper)
-parameters:
-  - name: range
-    description: Data range to process
-    example: "A1:Z100"
-formula: |
-  DENSIFY(range, "rows-any")
-```
+## Linter
 
-The README will show the fully expanded formula with `DENSIFY`'s definition inlined and arguments substituted.
+**Script**: `scripts/lint_formulas.py`
 
-### Composition Rules
+**Key rules enforced:**
+- Formulas must not start with `=` (added during generation)
+- Warns about self-executing LAMBDA patterns (can often be simplified)
 
-1. **Natural syntax**: Write `DENSIFY(range, "rows-any")` directly - no special syntax needed
-2. **Automatic expansion**: The parser detects calls to named functions and expands them
-3. **Argument substitution**: Parameters are replaced with the provided arguments
-4. **No circular dependencies**: The system detects cycles and reports errors before generation
+**Extensible**: Add new rules by subclassing `LintRule` and registering in the linter.
 
-### Example: DENSIFYROWS
+## Best Practices
 
-**Input YAML:**
-```yaml
-formula: |
-  DENSIFY(range, "rows-any")
-```
+### Formula Development
+1. Test in Google Sheets first before adding to repository
+2. Use composition - call existing named functions instead of duplicating logic
+3. Follow the 4-step workflow (lint → generate → test → commit both)
+4. Provide realistic parameter examples in YAML
 
-**Generated README (expanded):**
-The README will show DENSIFY's complete ~65-line formula with all occurrences of the `mode` parameter replaced by `"rows-any"` and the `range` parameter preserved.
+### Parser Improvements
+1. Run parser tests first: `pytest tests/test_formula_parser.py -v`
+2. Improve the pyparsing grammar - never add fallback mechanisms
+3. Add tests for new syntax (both positive and negative cases)
+4. Negative tests are critical - ensure invalid syntax is properly rejected
 
-### Implementation Details
+### Testing
+1. Add integration-level tests for new features (test public APIs)
+2. Include negative tests (invalid syntax should raise `ParseException`)
+3. Check coverage: `pytest tests/ --cov=scripts --cov-report=term-missing`
+4. For known issues: Use `@pytest.mark.xfail(reason="issue #XXX")`
 
-The composition system uses pyparsing to:
-- Parse Google Sheets formulas (including LAMBDA, LET, nested functions)
-- Build a dependency graph of formula references
-- Detect circular dependencies using DFS with cycle detection
-- Expand formulas recursively, innermost-first
-- Preserve string literals, function calls, and whitespace
+### Code Quality
+1. Follow PEP 8 conventions
+2. Keep functions focused (single responsibility)
+3. Prefer integration tests over unit tests
+4. Document non-obvious behavior with comments
+
+## Troubleshooting Quick Reference
+
+**Formula expansion fails**: Check for typos in function names (case-sensitive), verify all referenced functions exist, check for circular dependencies
+
+**Parser errors**: Verify balanced delimiters (`()`, `{}`, `""`), check syntax matches Google Sheets conventions, review negative tests in `tests/test_formula_parser.py` for grammar boundaries
+
+**CI fails**: README not regenerated (run generator and commit), linter errors (fix violations), test failures (fix or update tests), expansion errors (check formula syntax)
+
+**Local vs CI mismatch**: Ensure dependencies match (`uv pip install pytest pytest-cov pyyaml pyparsing`), clear pytest cache (`rm -rf .pytest_cache`)
 
 ## Dependencies
 
-- **Python**: 3.8 or higher
+- **Python**: 3.8+
 - **uv**: Package manager (used for running scripts)
-- **PyYAML**: 6.0 or higher (automatically handled by uv inline script metadata)
-- **pyparsing**: 3.0 or higher (for formula parsing and composition)
+- **Core**: PyYAML, pyparsing (parsing), pytest, pytest-cov (testing)
+
+Scripts use `uv` inline dependency declarations (PEP 723). CI workflows install dependencies explicitly.
 
 ## Notes for Claude Code
 
-- **Always run linter and generator**: Use `uv run scripts/lint_formulas.py` then `uv run scripts/generate_readme.py` after creating/modifying YAML files
-- **Formula files location**: All formula YAML files are in the `formulas/` directory
-- **README.md is auto-generated**: Edit `.readme-template.md` for static content changes
-- **Use `uv` not `pip`**: The project uses `uv` for dependency management
-- **Formula composition**: Formulas can reference other named functions - the system will automatically expand them
-- **GitHub API access**: If `gh` CLI is unavailable, use the patterns documented in the "GitHub API Operations" section below.
+### Critical Requirements
 
-## GitHub API Operations
+- **Always run linter and generator**: `uv run scripts/lint_formulas.py` then `uv run scripts/generate_readme.py`
+- **Always run tests**: `pytest tests/ -v` before committing
+- **Commit both files**: `.yaml` AND updated `README.md` together
+- **README.md is auto-generated**: Edit `.readme-template.md` for template changes, not README.md directly
 
-When `gh` CLI is unavailable, use `curl` with `$GITHUB_TOKEN`. Authentication format: `-u "token:$GITHUB_TOKEN"`
+### Development Tips
 
-**Create Issue:**
-```bash
-curl -s -u "token:$GITHUB_TOKEN" -X POST \
-  https://api.github.com/repos/OWNER/REPO/issues \
-  -H "Content-Type: application/json" \
-  -d '{"title": "Title", "body": "Body"}' | jq -r '.number'
-```
+- **Use `uv` not `pip`**: The project uses `uv` for dependency management and script execution
+- **Parser is pyparsing-only**: No regex fallbacks exist (intentionally removed)
+- **Fail-fast philosophy**: Invalid syntax should be caught immediately, not silently tolerated
+- **Formula composition works**: Formulas can reference other named functions - the system automatically expands them
+- **Tests are integration-focused**: Test public APIs, not implementation details
 
-**Create PR:**
-```bash
-curl -s -u "token:$GITHUB_TOKEN" -X POST \
-  https://api.github.com/repos/OWNER/REPO/pulls \
-  -H "Content-Type: application/json" \
-  -d '{"title": "Title", "body": "Body", "head": "branch", "base": "main"}' | jq -r '.number'
-```
+### GitHub API Patterns
 
-**Check CI Status:**
-```bash
-curl -s -u "token:$GITHUB_TOKEN" \
-  "https://api.github.com/repos/OWNER/REPO/commits/SHA/check-runs" | \
-  jq -r '.check_runs[] | "\(.name): \(.conclusion // "in_progress")"'
-```
+When `gh` CLI unavailable, use `curl -u "token:$GITHUB_TOKEN"` with GitHub REST API:
+- Create PR: `POST /repos/OWNER/REPO/pulls`
+- Check CI: `GET /repos/OWNER/REPO/commits/SHA/check-runs`
+- Use `-s` flag and parse with `jq` (never manual string parsing)
 
-**Poll for CI Completion:**
-```bash
-for i in {1..24}; do
-  status=$(curl -s -u "token:$GITHUB_TOKEN" \
-    "https://api.github.com/repos/OWNER/REPO/commits/SHA/check-runs" | \
-    jq -r '.check_runs[0].conclusion')
-  [ "$status" != "null" ] && break
-  sleep 10
-done
-```
+### Project Evolution Context
 
-**Key Points:**
-- Use `-s` flag with curl for clean output; parse with `jq` (never manual string parsing)
-- Use heredocs `-d @- <<'EOF'` for multiline JSON
-- Check-runs API is more reliable than commit status API
+The project has matured significantly:
+- Parser: Regex fallbacks eliminated, 100% pyparsing grammar
+- Testing: Comprehensive test suite with high coverage, integration-first approach
+- Quality: Fail-fast validation, README staleness detection, strict grammar validation
+- CI/CD: Automated testing, linting, and README generation with merge blocking
+
+For historical details, see issues and PRs in repository.
