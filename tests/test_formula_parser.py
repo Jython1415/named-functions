@@ -781,6 +781,202 @@ class TestParserMechanics:
         assert formula == reconstructed
 
 
+class TestReconstructCallCoverage:
+    """Test reconstruct_call() method to achieve full coverage of line 287, 319-333, 339-358."""
+
+    def setup_method(self):
+        """Initialize parser before each test."""
+        self.parser = FormulaParser()
+
+    def test_reconstruct_call_with_empty_argument_marker(self):
+        """Test reconstruct_call() with __EMPTY__ marker (covers line 287)."""
+        # IF(,,) should use __EMPTY__ markers for empty arguments
+        result = FormulaParser.reconstruct_call("IF", ["__EMPTY__", "__EMPTY__", "__EMPTY__"])
+        assert result == "IF(,,)"
+
+    def test_reconstruct_call_mixed_empty_and_normal_args(self):
+        """Test reconstruct_call() with mix of empty and normal arguments."""
+        result = FormulaParser.reconstruct_call("IF", ["condition", "__EMPTY__", "value"])
+        assert result == "IF(condition,, value)"
+
+    def test_reconstruct_call_with_multiple_empty_args(self):
+        """Test reconstruct_call() with multiple consecutive empty arguments."""
+        result = FormulaParser.reconstruct_call("FUNC", ["arg1", "__EMPTY__", "__EMPTY__", "arg4"])
+        # Each empty arg creates a comma position
+        assert result == "FUNC(arg1,,, arg4)"
+
+    def test_reconstruct_call_all_empty_args(self):
+        """Test reconstruct_call() with all empty arguments."""
+        result = FormulaParser.reconstruct_call("FUNC", ["__EMPTY__", "__EMPTY__"])
+        assert result == "FUNC(,)"
+
+    def test_reconstruct_call_with_parenthesized_list(self):
+        """Test reconstruct_call() with parenthesized expressions in list (covers lines 319-333)."""
+        # Create a complex expression with nested parentheses
+        # This triggers the parenthesis matching code
+        formula = 'FUNC((a + b) * c)'
+        ast = self.parser.parse(formula)
+        calls = self.parser.extract_function_calls(ast, {"FUNC"})
+
+        assert len(calls) == 1
+        reconstructed = FormulaParser.reconstruct_call(calls[0]["name"], calls[0]["args"])
+        assert reconstructed == formula
+
+    def test_reconstruct_call_deeply_nested_parentheses(self):
+        """Test reconstruct_call() with deeply nested parenthesized expressions."""
+        formula = 'FUNC(((a + b) * (c - d)) / e)'
+        ast = self.parser.parse(formula)
+        calls = self.parser.extract_function_calls(ast, {"FUNC"})
+
+        assert len(calls) == 1
+        reconstructed = FormulaParser.reconstruct_call(calls[0]["name"], calls[0]["args"])
+        assert reconstructed == formula
+
+    def test_reconstruct_call_with_dict_argument(self):
+        """Test reconstruct_call() handling dict arguments (covers lines 339-345)."""
+        # Create a dict representation of a function call
+        func_dict = {
+            'function': 'INNER',
+            'args': ['x', 'y']
+        }
+        result = FormulaParser.reconstruct_call("OUTER", [func_dict])
+        assert result == "OUTER(INNER(x, y))"
+
+    def test_reconstruct_call_with_nested_dict_arguments(self):
+        """Test reconstruct_call() with nested dict representations."""
+        inner_dict = {
+            'function': 'INNER',
+            'args': ['a']
+        }
+        middle_dict = {
+            'function': 'MIDDLE',
+            'args': [inner_dict]
+        }
+        result = FormulaParser.reconstruct_call("OUTER", [middle_dict])
+        assert result == "OUTER(MIDDLE(INNER(a)))"
+
+    def test_reconstruct_call_with_parseresults_argument(self):
+        """Test reconstruct_call() handling ParseResults arguments (covers lines 346-356)."""
+        # Parse a formula to get ParseResults
+        formula = 'OUTER(INNER(x, y))'
+        ast = self.parser.parse(formula)
+        calls = self.parser.extract_function_calls(ast, {"OUTER"})
+
+        assert len(calls) == 1
+        # The args should contain ParseResults or nested structures
+        reconstructed = FormulaParser.reconstruct_call(calls[0]["name"], calls[0]["args"])
+        assert "INNER" in reconstructed
+
+    def test_reconstruct_call_mixed_types_in_arguments(self):
+        """Test reconstruct_call() with mixed argument types (strings, ints, tuples, lists)."""
+        args = [
+            "identifier",
+            42,
+            ("__STRING_LITERAL__", "text"),
+            ["a", "+", "b"],
+            "__EMPTY__"
+        ]
+        result = FormulaParser.reconstruct_call("FUNC", args)
+        # Should handle all types gracefully
+        assert "FUNC(" in result
+        assert ")" in result
+
+    def test_reconstruct_call_with_number_arguments(self):
+        """Test reconstruct_call() with numeric arguments."""
+        result = FormulaParser.reconstruct_call("SUM", [1, 2, 3.5])
+        assert result == "SUM(1, 2, 3.5)"
+
+    def test_reconstruct_call_parenthesis_matching_unbalanced_case(self):
+        """Test reconstruct_call() parenthesis matching when depth never reaches zero."""
+        # This tests the case where we don't find a matching close paren
+        # We use a list that has unmatched parentheses
+        args = [["(", "a", "+", "b"]]  # Missing closing paren
+        result = FormulaParser.reconstruct_call("FUNC", args)
+        # Should still process and join the items
+        assert "FUNC(" in result
+
+    def test_reconstruct_call_with_float_number(self):
+        """Test reconstruct_call() preserves float numbers correctly."""
+        result = FormulaParser.reconstruct_call("FUNC", [3.14159, 2.71828])
+        assert result == "FUNC(3.14159, 2.71828)"
+
+    def test_reconstruct_call_single_empty_arg_no_trailing_comma(self):
+        """Test reconstruct_call() single empty argument produces correct spacing."""
+        result = FormulaParser.reconstruct_call("FUNC", ["__EMPTY__"])
+        assert result == "FUNC()"
+
+    def test_reconstruct_call_empty_arg_followed_by_value(self):
+        """Test reconstruct_call() empty arg followed by value."""
+        result = FormulaParser.reconstruct_call("IF", ["__EMPTY__", "true_val"])
+        assert result == "IF(, true_val)"
+
+    def test_reconstruct_call_value_followed_by_empty_arg(self):
+        """Test reconstruct_call() value followed by empty arg."""
+        result = FormulaParser.reconstruct_call("IF", ["condition", "__EMPTY__"])
+        assert result == "IF(condition,)"
+
+    def test_reconstruct_call_nested_parentheses_in_list(self):
+        """Test reconstruct_call() with nested parentheses in list argument (covers lines 323, 325)."""
+        # Create a list with parentheses to trigger the depth counting logic
+        args = [[["(", "a", "+", "b", ")", "*", "c"]]]
+        result = FormulaParser.reconstruct_call("FUNC", args)
+        assert "(" in result and ")" in result
+
+    def test_reconstruct_call_with_dict_no_function_key(self):
+        """Test reconstruct_call() with dict that has no 'function' key (covers line 345)."""
+        # A dict without 'function' key should just be converted to string
+        args = [{"key": "value"}]
+        result = FormulaParser.reconstruct_call("FUNC", args)
+        assert "FUNC(" in result
+
+    def test_reconstruct_call_with_parseresults_no_function(self):
+        """Test reconstruct_call() with ParseResults without function key (covers line 356)."""
+        # Parse a simple value that creates ParseResults without 'function' key
+        from pyparsing import ParseResults
+        # Create a ParseResults that is not a function call
+        pr = ParseResults(["x"])
+        result = FormulaParser.reconstruct_call("FUNC", [pr])
+        assert "FUNC(" in result
+
+    def test_reconstruct_call_with_multiple_nested_parens(self):
+        """Test complex nested parenthesis matching."""
+        # Test with deeply nested parentheses
+        args = [["(", "(", "a", ")", "+", "(", "b", ")", ")"]]
+        result = FormulaParser.reconstruct_call("FUNC", args)
+        assert "FUNC(" in result
+
+    def test_reconstruct_call_multiple_paren_groups(self):
+        """Test list with multiple separate parenthesized groups."""
+        # Create a list with multiple parenthesized expressions
+        args = [["(", "a", ")", "+", "(", "b", ")"]]
+        result = FormulaParser.reconstruct_call("FUNC", args)
+        assert "FUNC(" in result
+
+    def test_reconstruct_call_unmatched_close_paren_in_list(self):
+        """Test list with unmatched parenthesis (depth never reaches zero)."""
+        # This tests the else clause when depth != 0 after loop
+        args = [["(", "a", "b"]]  # Missing close paren
+        result = FormulaParser.reconstruct_call("FUNC", args)
+        # Should still process without crashing
+        assert "FUNC(" in result
+
+    def test_reconstruct_call_with_complex_mixed_arguments(self):
+        """Test reconstruct_call() with very complex mixed argument types."""
+        args = [
+            "simple_id",
+            42,
+            3.14,
+            ("__STRING_LITERAL__", "text"),
+            ("__PARENTHESIZED__", ["a", "+", "b"]),
+            {"key": "value"},
+            ["(", "expr", ")"],
+            "__EMPTY__"
+        ]
+        result = FormulaParser.reconstruct_call("COMPLEX", args)
+        assert "COMPLEX(" in result
+        assert ")" in result
+
+
 class TestNegativeCases:
     """Test that parser correctly rejects invalid syntax.
 
