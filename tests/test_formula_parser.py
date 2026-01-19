@@ -232,17 +232,14 @@ class TestStringHandling:
         assert len(calls) == 1
         assert calls[0]["name"] == "FUNC"
 
-    @pytest.mark.xfail(
-        reason="Google Sheets doubled-quote escaping not yet supported (issue #103)",
-        strict=False
-    )
     def test_string_with_escaped_quotes(self):
         """Test string with escaped quotes.
 
         NOTE: This test may reveal edge cases in escape handling.
         Google Sheets uses doubled quotes for escaping: ""Hello"" not \"Hello\"
         """
-        formula = r'FUNC("Say ""Hello""")'  # Google Sheets style
+        # Input: FUNC("Say ""Hello""")
+        formula = 'FUNC("Say ' + '""' + 'Hello' + '""' + '"' + ')'
         named_functions = {"FUNC"}
 
         ast = self.parser.parse(formula)
@@ -250,6 +247,84 @@ class TestStringHandling:
 
         assert len(calls) == 1
         assert calls[0]["name"] == "FUNC"
+
+    def test_string_with_multiple_escaped_quotes(self):
+        """Test string with multiple escaped quotes in one argument.
+
+        Example: She said "Hello" and "Goodbye" (with doubled quotes in Google Sheets)
+        """
+        # Input has doubled quotes for escaping
+        formula = 'FUNC("She said ' + '""' + 'Hello' + '""' + ' and ' + '""' + 'Goodbye' + '""' + '"' + ')'
+        named_functions = {"FUNC"}
+
+        ast = self.parser.parse(formula)
+        calls = self.parser.extract_function_calls(ast, named_functions)
+
+        assert len(calls) == 1
+        assert calls[0]["name"] == "FUNC"
+        assert len(calls[0]["args"]) == 1
+
+    def test_string_starting_with_escaped_quote(self):
+        """Test string that starts with an escaped quote."""
+        # Input: string starts with escaped quote (3 quotes at start)
+        formula = 'FUNC(' + '""' + '"Start with quote"' + ')'
+        named_functions = {"FUNC"}
+
+        ast = self.parser.parse(formula)
+        calls = self.parser.extract_function_calls(ast, named_functions)
+
+        assert len(calls) == 1
+        assert calls[0]["name"] == "FUNC"
+
+    def test_string_ending_with_escaped_quote(self):
+        """Test string that ends with an escaped quote."""
+        # Input: string ends with escaped quote (3 quotes at end)
+        formula = 'FUNC("End with quote' + '""' + '"' + ')'
+        named_functions = {"FUNC"}
+
+        ast = self.parser.parse(formula)
+        calls = self.parser.extract_function_calls(ast, named_functions)
+
+        assert len(calls) == 1
+        assert calls[0]["name"] == "FUNC"
+
+    def test_string_with_only_escaped_quotes(self):
+        """Test string containing only escaped quotes."""
+        # Input: string with two doubled quotes (4 quotes total)
+        formula = 'FUNC(' + '""' + '""' + ')'
+        named_functions = {"FUNC"}
+
+        ast = self.parser.parse(formula)
+        calls = self.parser.extract_function_calls(ast, named_functions)
+
+        assert len(calls) == 1
+        assert calls[0]["name"] == "FUNC"
+
+    def test_multiple_args_with_escaped_quotes(self):
+        """Test function with multiple arguments containing escaped quotes."""
+        # Input: two arguments each with doubled quotes
+        formula = 'FUNC("First ' + '""' + 'arg' + '""' + '", "Second ' + '""' + 'value' + '""' + '"' + ')'
+        named_functions = {"FUNC"}
+
+        ast = self.parser.parse(formula)
+        calls = self.parser.extract_function_calls(ast, named_functions)
+
+        assert len(calls) == 1
+        assert calls[0]["name"] == "FUNC"
+        assert len(calls[0]["args"]) == 2
+
+    def test_nested_function_with_escaped_quotes(self):
+        """Test nested function calls with escaped quotes in arguments."""
+        # Input: nested function with doubled quotes in inner arg
+        formula = 'OUTER(INNER("Value with ' + '""' + 'quotes' + '""' + '"' + ')' + ')'
+        named_functions = {"OUTER", "INNER"}
+
+        ast = self.parser.parse(formula)
+        calls = self.parser.extract_function_calls(ast, named_functions)
+
+        assert len(calls) == 2
+        func_names = {c["name"] for c in calls}
+        assert func_names == {"OUTER", "INNER"}
 
     def test_mixed_quote_types(self):
         """Test function with both single and double quoted arguments."""
