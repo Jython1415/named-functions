@@ -18,6 +18,9 @@ from pathlib import Path
 from typing import List, Dict, Any, Tuple
 import yaml
 
+from pyparsing import ParseException
+from formula_parser import FormulaParser, strip_comments
+
 
 class LintRule:
     """Base class for lint rules."""
@@ -149,6 +152,66 @@ class NoTopLevelLambdaRule(LintRule):
         return errors, warnings
 
 
+class ValidFormulaSyntaxRule(LintRule):
+    """Rule: Formula must be parseable by the pyparsing grammar."""
+
+    def __init__(self):
+        super().__init__(
+            name="valid-formula-syntax",
+            description="Formula must be parseable by the pyparsing grammar"
+        )
+        self.parser = FormulaParser()
+
+    def check(self, file_path: Path, data: Dict[str, Any]) -> Tuple[List[str], List[str]]:
+        """
+        Check that the formula can be parsed by the pyparsing grammar.
+
+        Args:
+            file_path: Path to the YAML file
+            data: Parsed YAML data
+
+        Returns:
+            Tuple of (errors, warnings)
+        """
+        errors = []
+        warnings = []
+
+        # Skip if formula field is missing or not a string
+        if 'formula' not in data:
+            return errors, warnings
+
+        formula = data['formula']
+        if not isinstance(formula, str):
+            return errors, warnings
+
+        # Strip comments before parsing (matches generator behavior)
+        cleaned_formula = strip_comments(formula)
+
+        try:
+            # Attempt to parse the formula
+            self.parser.parse(cleaned_formula)
+        except ParseException as e:
+            # Format error message with position information
+            error_msg = f"{file_path}: Formula syntax error"
+
+            # Add position info if available
+            if hasattr(e, 'loc'):
+                error_msg += f" at position {e.loc}"
+            if hasattr(e, 'msg'):
+                error_msg += f": {e.msg}"
+
+            # Add line/column context if available
+            if hasattr(e, 'line') and hasattr(e, 'col'):
+                error_msg += f"\n  Line: {e.line}\n  Location: {' ' * (e.col - 1)}^"
+
+            errors.append(error_msg)
+        except Exception as e:
+            # Catch any other parsing errors
+            errors.append(f"{file_path}: Unexpected error while parsing formula: {e}")
+
+        return errors, warnings
+
+
 class FormulaLinter:
     """Main linter class that runs all validation rules."""
 
@@ -156,6 +219,7 @@ class FormulaLinter:
         self.rules: List[LintRule] = [
             NoLeadingEqualsRule(),
             NoTopLevelLambdaRule(),
+            ValidFormulaSyntaxRule(),
             # Add more rules here as needed
         ]
 
