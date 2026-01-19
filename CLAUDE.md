@@ -157,130 +157,33 @@ The composition system uses pyparsing to:
 
 ## GitHub API Operations
 
-When the `gh` CLI is unavailable, you can interact with GitHub using `curl` and the `$GITHUB_TOKEN` environment variable. This section documents tested patterns for common operations.
+When `gh` CLI is unavailable, use `curl` with `$GITHUB_TOKEN`. Authentication format: `-u "token:$GITHUB_TOKEN"`
 
-### Checking for GitHub Token Availability
-
-Verify the token is available before attempting API calls:
-
+**Create Issue:**
 ```bash
-[ -n "$GITHUB_TOKEN" ] && echo "✓ Available" || echo "✗ Not available"
-```
-
-### Authentication Format
-
-Use the `-u "token:$GITHUB_TOKEN"` format for basic authentication with curl:
-
-```bash
-curl -s -u "token:$GITHUB_TOKEN" https://api.github.com/repos/OWNER/REPO/issues
-```
-
-**Important**: Use the `-u` flag format shown above, NOT the Authorization header format. This is essential for proper authentication.
-
-### Creating Issues
-
-Create a new GitHub issue with title and body:
-
-```bash
-curl -s -u "token:$GITHUB_TOKEN" \
-  -X POST \
+curl -s -u "token:$GITHUB_TOKEN" -X POST \
   https://api.github.com/repos/OWNER/REPO/issues \
   -H "Content-Type: application/json" \
-  -d @- <<'EOF' | jq -r '.number'
-{
-  "title": "Issue title",
-  "body": "Issue body with markdown support"
-}
-EOF
+  -d '{"title": "Title", "body": "Body"}' | jq -r '.number'
 ```
 
-The `jq -r '.number'` extracts the issue number from the response.
-
-### Creating Pull Requests
-
-Create a new pull request:
-
+**Create PR:**
 ```bash
-curl -s -u "token:$GITHUB_TOKEN" \
-  -X POST \
+curl -s -u "token:$GITHUB_TOKEN" -X POST \
   https://api.github.com/repos/OWNER/REPO/pulls \
   -H "Content-Type: application/json" \
-  -d '{
-    "title": "PR title",
-    "body": "PR description with markdown",
-    "head": "feature-branch",
-    "base": "main"
-  }' | jq -r '.number'
+  -d '{"title": "Title", "body": "Body", "head": "branch", "base": "main"}' | jq -r '.number'
 ```
 
-### Monitoring CI Status
-
-Two complementary approaches exist for checking CI/workflow status:
-
-#### Commit Status API (Combined Status)
-
-Get the overall combined status for a commit:
-
-```bash
-curl -s -u "token:$GITHUB_TOKEN" \
-  "https://api.github.com/repos/OWNER/REPO/commits/SHA/status" | \
-  jq -r '.state'
-```
-
-Returns: "success", "failure", "pending", or "error"
-
-#### Check Runs API (Detailed Per-Job)
-
-Get detailed information about individual workflow jobs:
-
+**Check CI Status (use check-runs for reliable status):**
 ```bash
 curl -s -u "token:$GITHUB_TOKEN" \
   "https://api.github.com/repos/OWNER/REPO/commits/SHA/check-runs" | \
-  jq -r '.check_runs[] | "\(.name): \(.status) - \(.conclusion // "in_progress")"'
+  jq -r '.check_runs[] | "\(.name): \(.conclusion // "in_progress")"'
 ```
 
-This shows each job's status and conclusion (e.g., "test: completed - success").
-
-### Polling for CI Completion
-
-When waiting for CI to complete, use a polling loop with the check-runs API:
-
-```bash
-for i in {1..24}; do
-  sleep 10
-  status=$(curl -s -u "token:$GITHUB_TOKEN" \
-    "https://api.github.com/repos/OWNER/REPO/commits/SHA/check-runs" | \
-    jq -r '.check_runs[] | select(.name == "test") | .conclusion')
-
-  if [ "$status" = "success" ] || [ "$status" = "failure" ]; then
-    echo "CI completed with status: $status"
-    break
-  fi
-done
-```
-
-This polls every 10 seconds for up to 4 minutes. Adjust the sleep duration and loop count as needed.
-
-### Key Insights and Gotchas
-
-1. **Commit Status API Limitations**: The commit status API can show "pending" even when individual check-runs have completed. Use the check-runs API for more reliable status information.
-
-2. **Always Use `-s` Flag**: Include `-s` (silent) with curl to suppress progress output, which is important when parsing JSON responses.
-
-3. **JSON Parsing with jq**: Always use `jq` to parse JSON responses. Avoid manual string parsing which is error-prone.
-
-4. **Heredocs for Multiline Bodies**: Use heredocs with `-d @-` for multiline JSON bodies:
-   ```bash
-   -d @- <<'EOF'
-   { ... }
-   EOF
-   ```
-
-5. **Check Token Format**: If authentication fails, verify the token format is exactly `-u "token:$GITHUB_TOKEN"` (not other header-based formats).
-
-6. **Rate Limiting**: GitHub API has rate limits. For frequent polling, be aware of the limits and add appropriate delays between requests.
-
-7. **Commit SHA**: Use full commit SHA for API calls, or `HEAD` when on a branch:
-   ```bash
-   git rev-parse HEAD
-   ```
+**Key Points:**
+- Use `-s` flag with curl for clean JSON output
+- Parse responses with `jq` (never manual string parsing)
+- Use heredocs `-d @- <<'EOF'` for multiline JSON
+- Check-runs API is more reliable than commit status API for CI polling
