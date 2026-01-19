@@ -814,6 +814,22 @@ class TestNegativeCases:
         with pytest.raises(ParseException):
             self.parser.parse("(A1))")
 
+    def test_empty_array_rejected(self):
+        """Test that empty array literal is rejected.
+
+        '{}' is invalid in Google Sheets - arrays must have at least one element.
+        """
+        with pytest.raises(ParseException):
+            self.parser.parse("{}")
+
+    def test_array_with_empty_element_rejected(self):
+        """Test that array with empty element is rejected.
+
+        '{,}' is invalid in Google Sheets - array elements cannot be empty.
+        """
+        with pytest.raises(ParseException):
+            self.parser.parse("{,}")
+
 
 class TestValidEdgeCases:
     """Test that valid edge cases are correctly accepted.
@@ -925,22 +941,6 @@ class TestValidEdgeCases:
         This is equivalent to +(-A1) = -A1.
         """
         result = self.parser.parse("+-A1")
-        assert result is not None
-
-    def test_empty_array_accepted(self):
-        """Test that empty array literal is accepted.
-
-        '{}' is valid - represents an empty array in Google Sheets.
-        """
-        result = self.parser.parse("{}")
-        assert result is not None
-
-    def test_array_with_empty_element_accepted(self):
-        """Test that array with empty element is accepted.
-
-        '{,}' is valid - array with empty elements.
-        """
-        result = self.parser.parse("{,}")
         assert result is not None
 
 
