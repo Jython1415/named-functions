@@ -175,15 +175,25 @@ curl -s -u "token:$GITHUB_TOKEN" -X POST \
   -d '{"title": "Title", "body": "Body", "head": "branch", "base": "main"}' | jq -r '.number'
 ```
 
-**Check CI Status (use check-runs for reliable status):**
+**Check CI Status:**
 ```bash
 curl -s -u "token:$GITHUB_TOKEN" \
   "https://api.github.com/repos/OWNER/REPO/commits/SHA/check-runs" | \
   jq -r '.check_runs[] | "\(.name): \(.conclusion // "in_progress")"'
 ```
 
+**Poll for CI Completion:**
+```bash
+for i in {1..24}; do
+  status=$(curl -s -u "token:$GITHUB_TOKEN" \
+    "https://api.github.com/repos/OWNER/REPO/commits/SHA/check-runs" | \
+    jq -r '.check_runs[0].conclusion')
+  [ "$status" != "null" ] && break
+  sleep 10
+done
+```
+
 **Key Points:**
-- Use `-s` flag with curl for clean JSON output
-- Parse responses with `jq` (never manual string parsing)
+- Use `-s` flag with curl for clean output; parse with `jq` (never manual string parsing)
 - Use heredocs `-d @- <<'EOF'` for multiline JSON
-- Check-runs API is more reliable than commit status API for CI polling
+- Check-runs API is more reliable than commit status API
