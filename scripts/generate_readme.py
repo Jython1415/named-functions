@@ -124,8 +124,9 @@ class FormulaParser:
         # We use ZeroOrMore to handle any number of operator-term pairs
         # This is permissive - we don't validate syntax, just extract function calls
         # Group the expression to prevent it from being flattened when used in DelimitedList
+        # IMPORTANT: Don't suppress operators - we need them for reconstruction
         from pyparsing import ZeroOrMore
-        expression <<= Group(term + ZeroOrMore(operators.suppress() + term))
+        expression <<= Group(term + ZeroOrMore(operators + term))
 
         # For parsing the entire formula, we allow multiple expressions
         # This handles cases like: FUNC(x) + FUNC(y)
@@ -208,8 +209,89 @@ class FormulaParser:
 
         walk(ast)
 
+        # If AST walk didn't find calls, try scanning the original formula
+        # This handles cases where pyparsing couldn't fully parse complex structures
+        if not calls:
+            # Get original formula from cache
+            cache_id = id(ast)
+            if cache_id in self._formula_cache:
+                formula = self._formula_cache[cache_id]
+                calls = self._scan_for_calls(formula, named_functions)
+
         # Return calls sorted by depth (deepest first for bottom-up expansion)
         return sorted(calls, key=lambda c: c["depth"], reverse=True)
+
+    def _scan_for_calls(self, formula: str, named_functions: Set[str]) -> List[Dict[str, Any]]:
+        """
+        Scan formula text for function calls using pattern matching.
+
+        This is a fallback when AST walking fails on complex formulas.
+
+        Args:
+            formula: Formula text to scan
+            named_functions: Set of function names to look for
+
+        Returns:
+            List of function call dictionaries
+        """
+        # Build a grammar for just function calls
+        identifier = Word(alphas + "_", alphanums + "_")
+        lparen = Literal("(")
+        rparen = Literal(")")
+
+        # Forward declaration for recursive expressions
+        expression = Forward()
+
+        # String literals
+        string_literal = (
+            (QuotedString('"', esc_char='\\') | QuotedString("'", esc_char='\\'))
+            .set_parse_action(lambda t: ('__STRING_LITERAL__', t[0]))
+        )
+
+        # Numbers
+        number = pyparsing_common.number()
+
+        # Operators
+        from pyparsing import one_of
+        operators = one_of("+ - * / ^ & = <> < > <= >= :")
+
+        # Parenthesized expression (for handling nested parens like (num_cols - 1))
+        paren_expr = Forward()
+        paren_expr <<= lparen + Group(expression) + rparen
+
+        # Basic term (simplified - just enough to parse arguments)
+        term = string_literal | paren_expr | number | identifier
+
+        # Expression with operators
+        from pyparsing import ZeroOrMore
+        expression <<= Group(term + ZeroOrMore(operators + term))
+
+        # Function call pattern
+        function_call = Group(
+            identifier("function") +
+            lparen.suppress() +
+            Group(Optional(DelimitedList(expression)))("args") +
+            rparen.suppress()
+        )
+
+        calls = []
+        # Use scanString to find all function calls in the formula
+        for tokens, start, end in function_call.scan_string(formula):
+            # tokens is a ParseResults with a Group, so we need to access the first element
+            if len(tokens) > 0:
+                token_dict = tokens[0].asDict()
+                if "function" in token_dict:
+                    func_name = token_dict["function"]
+                    if func_name in named_functions:
+                        args = list(token_dict["args"]) if "args" in token_dict else []
+                        calls.append({
+                            "name": func_name,
+                            "args": args,
+                            "depth": 0,  # We don't have depth info from scanning
+                            "node": None
+                        })
+
+        return calls
 
     @staticmethod
     def reconstruct_call(func_name: str, args: List) -> str:
@@ -230,23 +312,43 @@ class FormulaParser:
                 # It's a quoted string literal, add quotes back
                 return f'"{arg[1]}"'
             elif isinstance(arg, str):
-                # It's an identifier, return as-is
+                # It's an identifier or operator, return as-is
                 return arg
             elif isinstance(arg, (int, float)):
                 return str(arg)
             elif isinstance(arg, list):
                 # Handle list arguments (from grouped expressions)
                 # Recursively stringify each item
-                # For expressions with multiple terms, we need to infer the operators
-                # In most cases, multiple terms in a list come from & concatenation
+                # The list may contain operators interspersed with terms
                 stringified_items = [stringify(item) for item in arg]
-                # If there are multiple items, they were likely separated by & operator
-                if len(stringified_items) > 1:
-                    return " & ".join(stringified_items)
-                elif len(stringified_items) == 1:
-                    return stringified_items[0]
-                else:
-                    return ""
+
+                # Special handling for parenthesized expressions
+                # If the list is ['(', content, ')'], join without spaces around parens
+                result_parts = []
+                i = 0
+                while i < len(stringified_items):
+                    if i < len(stringified_items) - 2 and stringified_items[i] == '(':
+                        # Find matching )
+                        depth = 1
+                        j = i + 1
+                        while j < len(stringified_items) and depth > 0:
+                            if stringified_items[j] == '(':
+                                depth += 1
+                            elif stringified_items[j] == ')':
+                                depth -= 1
+                            j += 1
+                        # Join the parenthesized section without extra spaces
+                        if depth == 0:
+                            # Found matching ), join i to j-1 without spaces around parens
+                            inner = " ".join(stringified_items[i+1:j-1])
+                            result_parts.append(f"({inner})")
+                            i = j
+                            continue
+                    result_parts.append(stringified_items[i])
+                    i += 1
+
+                # Join with spaces - operators are already in the list
+                return " ".join(result_parts)
             elif isinstance(arg, dict):
                 # Handle dict representation from asDict()
                 if 'function' in arg:
@@ -458,6 +560,7 @@ def substitute_arguments(
                     return str(item)
                 else:
                     return str(item)
+            # Join with spaces - operators are now preserved in the list
             arg_str = " ".join(stringify_item(item) for item in arg)
         elif isinstance(arg, ParseResults):
             # Reconstruct from parse results
