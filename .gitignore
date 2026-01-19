@@ -1,7 +1,18 @@
 !.gitignore
 .claude/
+
+# Python cache
 __pycache__/
-.pytest_cache/
 *.pyc
+*.pyo
+*.pyd
+
+# Testing
+.pytest_cache/
 .coverage
+htmlcov/
+
+# UV virtual environment
 .venv/
+
+# Note: DO commit uv.lock - it ensures reproducible dependencies

@@ -1,11 +1,4 @@
 #!/usr/bin/env python3
-# /// script
-# requires-python = ">=3.8"
-# dependencies = [
-#   "pyyaml>=6.0",
-#   "pyparsing>=3.0",
-# ]
-# ///
 """
 Generate README.md from formula YAML files.
 
