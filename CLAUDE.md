@@ -47,6 +47,9 @@ parameters:
   - name: param1
     description: Description of parameter
     example: "A1:B10"
+  - name: param2
+    description: Another parameter
+    example: '""'
 formula: |
   LET(
     variable, expression,
@@ -138,7 +141,9 @@ Formulas can call other named functions - the system automatically:
 
 **Key rules enforced:**
 - Formulas must not start with `=` (added during generation)
+- All parameters must have non-empty example values
 - Warns about self-executing LAMBDA patterns (can often be simplified)
+- Formulas must be syntactically valid per pyparsing grammar
 
 **Extensible**: Add new rules by subclassing `LintRule` and registering in the linter.
 
@@ -148,7 +153,7 @@ Formulas can call other named functions - the system automatically:
 1. Test in Google Sheets first before adding to repository
 2. Use composition - call existing named functions instead of duplicating logic
 3. Follow the 4-step workflow (lint → generate → test → commit both)
-4. Provide realistic parameter examples in YAML
+4. Provide non-empty example values for all parameters (linter enforces this; e.g., `"A1:B10"`, `'""'`, `BLANK()`, `0`)
 
 ### Parser Improvements
 1. Run parser tests first: `uv run pytest tests/test_formula_parser.py -v`

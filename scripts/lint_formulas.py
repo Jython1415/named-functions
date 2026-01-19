@@ -152,6 +152,62 @@ class NoTopLevelLambdaRule(LintRule):
         return errors, warnings
 
 
+class RequireParameterExamplesRule(LintRule):
+    """Rule: All parameters must have non-empty example values."""
+
+    def __init__(self):
+        super().__init__(
+            name="require-parameter-examples",
+            description="All parameters must have non-empty example values"
+        )
+
+    def check(self, file_path: Path, data: Dict[str, Any]) -> Tuple[List[str], List[str]]:
+        """
+        Check that all parameters have non-empty examples.
+
+        Args:
+            file_path: Path to the YAML file
+            data: Parsed YAML data
+
+        Returns:
+            Tuple of (errors, warnings)
+        """
+        errors = []
+        warnings = []
+
+        # Skip if parameters field is missing
+        if 'parameters' not in data:
+            return errors, warnings
+
+        parameters = data['parameters']
+        if not isinstance(parameters, list):
+            return errors, warnings
+
+        # Check each parameter for example field
+        for i, param in enumerate(parameters):
+            if not isinstance(param, dict):
+                continue
+
+            param_name = param.get('name', f'parameter-{i}')
+
+            # Check if example field exists
+            if 'example' not in param:
+                errors.append(
+                    f"{file_path}: Parameter '{param_name}' is missing 'example' field. "
+                    f"Provide a concrete example value (e.g., '\"A1:B10\"', '0', 'BLANK()', etc.)"
+                )
+            else:
+                # Check if example is empty string
+                example = param.get('example')
+                if isinstance(example, str) and example == '':
+                    errors.append(
+                        f"{file_path}: Parameter '{param_name}' has empty example. "
+                        f"Provide a concrete example value (e.g., '\"A1:B10\"', '0', '\"\"', 'BLANK()', etc.)"
+                    )
+
+        return errors, warnings
+
+
 class ValidFormulaSyntaxRule(LintRule):
     """Rule: Formula must be parseable by the pyparsing grammar."""
 
@@ -219,6 +275,7 @@ class FormulaLinter:
         self.rules: List[LintRule] = [
             NoLeadingEqualsRule(),
             NoTopLevelLambdaRule(),
+            RequireParameterExamplesRule(),
             ValidFormulaSyntaxRule(),
             # Add more rules here as needed
         ]
