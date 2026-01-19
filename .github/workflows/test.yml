@@ -22,29 +22,29 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Set up Python environment and install test dependencies
-        run: |
-          uv venv
-          source .venv/bin/activate
-          uv pip install pytest pytest-cov pyyaml pyparsing
+      - name: Set up Python
+        run: uv python install
+
+      - name: Install dependencies
+        run: uv sync --dev
 
       - name: Run unit tests
-        run: |
-          source .venv/bin/activate
-          pytest tests/ -v --cov=scripts --cov-report=term-missing
+        run: uv run pytest tests/ -v --cov=scripts --cov-report=term-missing
 
       - name: Test linter on formulas
-        run: |
-          uv run scripts/lint_formulas.py
+        run: uv run python scripts/lint_formulas.py
 
       - name: Test README generation
-        run: |
-          uv run scripts/generate_readme.py
+        run: uv run python scripts/generate_readme.py
 
       - name: Verify README is up to date
         run: |
           if ! git diff --quiet README.md; then
-            echo "ERROR: README.md is out of date. Please run 'uv run scripts/generate_readme.py' locally."
+            echo "ERROR: README.md is out of date. Please run 'uv run python scripts/generate_readme.py' locally."
             git diff README.md
             exit 1
           fi
+
+      - name: Minimize uv cache
+        run: uv cache prune --ci
+
