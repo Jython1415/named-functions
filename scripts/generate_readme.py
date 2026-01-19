@@ -62,7 +62,10 @@ class FormulaParser:
         identifier = Word(alphas + "_", alphanums + "_")
         lparen = Literal("(")
         rparen = Literal(")")
+        lbrace = Literal("{")
+        rbrace = Literal("}")
         comma = Literal(",")
+        semicolon = Literal(";")
 
         # String literals (handle escaped quotes)
         # Wrap in a marker to preserve information that these were quoted
@@ -73,6 +76,14 @@ class FormulaParser:
 
         # Numbers
         number = pyparsing_common.number()
+
+        # Cell reference patterns: A1, $A$1, etc.
+        cell_ref = Word(alphas + "$", alphanums + "$")
+
+        # Range reference: A1:B10, A:A, 1:1, etc.
+        # Use Regex for flexibility with sheet references and complex patterns
+        from pyparsing import Regex
+        range_ref = Regex(r'[A-Za-z$]*[0-9$]*:[A-Za-z$]*[0-9$]*')
 
         # Forward declaration for recursive expressions
         expression = Forward()
@@ -87,9 +98,35 @@ class FormulaParser:
             rparen.suppress()
         )
 
-        # Expression can be: function call, identifier, string, or number
-        expression <<= function_call | string_literal | identifier | number
+        # Array literal: {1,2,3} or {1,2;3,4}
+        # Arrays can contain expressions separated by commas (columns) and semicolons (rows)
+        # Use a simpler approach: match content inside braces without parsing structure
+        from pyparsing import Regex
+        array_literal = Regex(r'\{[^}]*\}')
 
+        # Operators (all Google Sheets operators)
+        # Arithmetic: +, -, *, /, ^
+        # String concatenation: &
+        # Comparison: =, <>, <, >, <=, >=
+        # Note: We define these but don't strictly parse operator precedence
+        # We just need them recognized so parsing doesn't stop at them
+        from pyparsing import one_of
+        operators = one_of("+ - * / ^ & = <> < > <= >= :")
+
+        # Basic term: can be a function call, string, number, array, range, or identifier
+        # Order matters: more specific patterns first
+        # range_ref must come before cell_ref (because A1:B10 contains A1)
+        # function_call must come before identifier (because FUNC is also an identifier)
+        term = function_call | string_literal | array_literal | range_ref | number | cell_ref | identifier
+
+        # Expression: one or more terms, possibly separated by operators
+        # We use ZeroOrMore to handle any number of operator-term pairs
+        # This is permissive - we don't validate syntax, just extract function calls
+        from pyparsing import ZeroOrMore
+        expression <<= term + ZeroOrMore(operators.suppress() + term)
+
+        # For parsing the entire formula, we allow multiple expressions
+        # This handles cases like: FUNC(x) + FUNC(y)
         self.grammar = expression
 
     def parse(self, formula: str) -> ParseResults:
@@ -107,10 +144,19 @@ class FormulaParser:
         """
         # Normalize: strip leading = and whitespace
         normalized = formula.lstrip('=').strip()
-        result = self.grammar.parse_string(normalized, parse_all=False)
-        cache_id = id(result)
-        self._formula_cache[cache_id] = normalized
-        return result
+        try:
+            # Try to parse the entire formula with parseAll=True
+            result = self.grammar.parse_string(normalized, parse_all=True)
+            cache_id = id(result)
+            self._formula_cache[cache_id] = normalized
+            return result
+        except ParseException:
+            # If parseAll=True fails, try with parseAll=False
+            # This handles cases where the formula has syntax we don't fully support
+            result = self.grammar.parse_string(normalized, parse_all=False)
+            cache_id = id(result)
+            self._formula_cache[cache_id] = normalized
+            return result
 
     def extract_function_calls(self, ast: ParseResults, named_functions: Set[str]) -> List[Dict[str, Any]]:
         """Extract function calls by looking at the AST node dict."""

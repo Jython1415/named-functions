@@ -438,20 +438,12 @@ class TestEdgeCases:
         """Initialize parser before each test."""
         self.parser = FormulaParser()
 
-    @pytest.mark.xfail(
-        reason="Parser uses parse_all=False so stops at '+' operator, only finds first call. "
-               "Regex fallback doesn't activate because pyparsing found 1 call. "
-               "This is a known limitation - see issue #96."
-    )
     def test_multiple_calls_same_function(self):
         """Test formula with multiple calls to the same function.
 
-        KNOWN ISSUE: pyparsing stops at '+' operator (not in grammar), so only
-        the first FUNC(x) is parsed. The regex fallback doesn't activate because
-        pyparsing found at least one call. This means the second FUNC(y) is missed.
-
-        Expected behavior: Should find both FUNC calls.
-        Actual behavior: Only finds FUNC(x).
+        This test was previously marked as xfail but now passes with the enhanced
+        pyparsing grammar that supports operators. The grammar can now parse
+        expressions like FUNC(x) + FUNC(y) and extract both function calls.
         """
         formula = "FUNC(x) + FUNC(y)"
         named_functions = {"FUNC"}
