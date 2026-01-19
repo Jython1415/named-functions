@@ -750,15 +750,25 @@ def generate_formula_list(formulas: List[Dict[str, Any]]) -> str:
     parser = FormulaParser()
     all_formulas = {f['name']: f for f in formulas}
     expanded_cache = {}
+    expansion_failures = []
 
     for formula in sorted_formulas:
         try:
             expanded = expand_formula(formula, all_formulas, parser, expanded_cache)
             print(f"  ✓ Expanded {formula['name']}")
         except Exception as e:
-            print(f"  Warning: Could not expand {formula['name']}: {e}")
+            error_msg = f"{formula['name']}: {e}"
+            expansion_failures.append(error_msg)
+            print(f"  ✗ Failed to expand {formula['name']}: {e}")
             # Use original formula if expansion fails (with comments stripped)
             expanded_cache[formula['name']] = strip_comments(formula['formula']).strip()
+
+    # If any formulas failed to expand, raise an error to block the build
+    if expansion_failures:
+        failure_details = "\n  - ".join(expansion_failures)
+        raise ValidationError(
+            f"Formula expansion failures detected:\n  - {failure_details}"
+        )
 
     # Generate summary list
     lines = ["### Quick Reference\n"]
