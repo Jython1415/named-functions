@@ -160,7 +160,7 @@ class RequireParameterExamplesRule(LintRule):
     def __init__(self):
         super().__init__(
             name="require-parameter-examples",
-            description="All parameters must have non-empty example values"
+            description="All parameters must have non-empty example values",
         )
 
     def check(self, file_path: Path, data: Dict[str, Any]) -> Tuple[List[str], List[str]]:
@@ -178,10 +178,10 @@ class RequireParameterExamplesRule(LintRule):
         warnings = []
 
         # Skip if parameters field is missing
-        if 'parameters' not in data:
+        if "parameters" not in data:
             return errors, warnings
 
-        parameters = data['parameters']
+        parameters = data["parameters"]
         if not isinstance(parameters, list):
             return errors, warnings
 
@@ -190,18 +190,18 @@ class RequireParameterExamplesRule(LintRule):
             if not isinstance(param, dict):
                 continue
 
-            param_name = param.get('name', f'parameter-{i}')
+            param_name = param.get("name", f"parameter-{i}")
 
             # Check if example field exists
-            if 'example' not in param:
+            if "example" not in param:
                 errors.append(
                     f"{file_path}: Parameter '{param_name}' is missing 'example' field. "
                     f"Provide a concrete example value (e.g., '\"A1:B10\"', '0', 'BLANK()', etc.)"
                 )
             else:
                 # Check if example is empty string
-                example = param.get('example')
-                if isinstance(example, str) and example == '':
+                example = param.get("example")
+                if isinstance(example, str) and example == "":
                     errors.append(
                         f"{file_path}: Parameter '{param_name}' has empty example. "
                         f"Provide a concrete example value (e.g., '\"A1:B10\"', '0', '\"\"', 'BLANK()', etc.)"

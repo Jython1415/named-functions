@@ -26,7 +26,6 @@ from lint_formulas import (
     NoLeadingEqualsRule,
     NoTopLevelLambdaRule,
     RequireParameterExamplesRule,
-    ValidFormulaSyntaxRule,
 )
 
 
@@ -230,13 +229,7 @@ class TestRequireParameterExamplesRule:
     def test_parameter_with_non_empty_example_passes(self):
         """Test that parameter with non-empty example passes."""
         data = {
-            'parameters': [
-                {
-                    'name': 'input',
-                    'description': 'Test parameter',
-                    'example': 'A1:B10'
-                }
-            ]
+            "parameters": [{"name": "input", "description": "Test parameter", "example": "A1:B10"}]
         }
         errors, warnings = self.rule.check(Path("test.yaml"), data)
 
@@ -246,46 +239,35 @@ class TestRequireParameterExamplesRule:
     def test_parameter_with_empty_example_fails(self):
         """Test that parameter with empty example produces error."""
         data = {
-            'parameters': [
-                {
-                    'name': 'replacement',
-                    'description': 'Replacement value',
-                    'example': ''
-                }
+            "parameters": [
+                {"name": "replacement", "description": "Replacement value", "example": ""}
             ]
         }
         errors, warnings = self.rule.check(Path("test.yaml"), data)
 
         assert len(errors) == 1
-        assert 'empty example' in errors[0].lower()
-        assert 'replacement' in errors[0].lower()
+        assert "empty example" in errors[0].lower()
+        assert "replacement" in errors[0].lower()
         assert len(warnings) == 0
 
     def test_parameter_missing_example_fails(self):
         """Test that parameter without example field produces error."""
-        data = {
-            'parameters': [
-                {
-                    'name': 'input',
-                    'description': 'Missing example'
-                }
-            ]
-        }
+        data = {"parameters": [{"name": "input", "description": "Missing example"}]}
         errors, warnings = self.rule.check(Path("test.yaml"), data)
 
         assert len(errors) == 1
-        assert 'missing' in errors[0].lower()
-        assert 'example' in errors[0].lower()
-        assert 'input' in errors[0].lower()
+        assert "missing" in errors[0].lower()
+        assert "example" in errors[0].lower()
+        assert "input" in errors[0].lower()
         assert len(warnings) == 0
 
     def test_multiple_parameters_all_with_examples_passes(self):
         """Test that multiple parameters with examples pass."""
         data = {
-            'parameters': [
-                {'name': 'range', 'description': 'Data range', 'example': 'A1:Z100'},
-                {'name': 'mode', 'description': 'Mode', 'example': '"rows-any"'},
-                {'name': 'func', 'description': 'Callback', 'example': 'LAMBDA(x, SUM(x))'}
+            "parameters": [
+                {"name": "range", "description": "Data range", "example": "A1:Z100"},
+                {"name": "mode", "description": "Mode", "example": '"rows-any"'},
+                {"name": "func", "description": "Callback", "example": "LAMBDA(x, SUM(x))"},
             ]
         }
         errors, warnings = self.rule.check(Path("test.yaml"), data)
@@ -296,65 +278,49 @@ class TestRequireParameterExamplesRule:
     def test_multiple_parameters_one_empty_fails(self):
         """Test that multiple parameters with one empty example fails."""
         data = {
-            'parameters': [
-                {'name': 'range', 'description': 'Data range', 'example': 'A1:Z100'},
-                {'name': 'value', 'description': 'Value', 'example': ''},
-                {'name': 'func', 'description': 'Callback', 'example': 'LAMBDA(x, SUM(x))'}
+            "parameters": [
+                {"name": "range", "description": "Data range", "example": "A1:Z100"},
+                {"name": "value", "description": "Value", "example": ""},
+                {"name": "func", "description": "Callback", "example": "LAMBDA(x, SUM(x))"},
             ]
         }
         errors, warnings = self.rule.check(Path("test.yaml"), data)
 
         assert len(errors) == 1
-        assert 'value' in errors[0].lower()
-        assert 'empty example' in errors[0].lower()
+        assert "value" in errors[0].lower()
+        assert "empty example" in errors[0].lower()
 
     def test_parameter_with_quoted_example_passes(self):
         """Test that parameter with quoted example passes."""
-        data = {
-            'parameters': [
-                {'name': 'mode', 'description': 'Mode', 'example': '"rows-any"'}
-            ]
-        }
+        data = {"parameters": [{"name": "mode", "description": "Mode", "example": '"rows-any"'}]}
         errors, warnings = self.rule.check(Path("test.yaml"), data)
 
         assert len(errors) == 0
 
     def test_parameter_with_blank_function_example_passes(self):
         """Test that parameter with BLANK() example passes."""
-        data = {
-            'parameters': [
-                {'name': 'fill', 'description': 'Fill value', 'example': 'BLANK()'}
-            ]
-        }
+        data = {"parameters": [{"name": "fill", "description": "Fill value", "example": "BLANK()"}]}
         errors, warnings = self.rule.check(Path("test.yaml"), data)
 
         assert len(errors) == 0
 
     def test_parameter_with_numeric_example_passes(self):
         """Test that parameter with numeric example passes."""
-        data = {
-            'parameters': [
-                {'name': 'count', 'description': 'Count', 'example': 10}
-            ]
-        }
+        data = {"parameters": [{"name": "count", "description": "Count", "example": 10}]}
         errors, warnings = self.rule.check(Path("test.yaml"), data)
 
         assert len(errors) == 0
 
     def test_parameter_with_zero_example_passes(self):
         """Test that parameter with zero example passes (falsy but valid)."""
-        data = {
-            'parameters': [
-                {'name': 'offset', 'description': 'Offset', 'example': 0}
-            ]
-        }
+        data = {"parameters": [{"name": "offset", "description": "Offset", "example": 0}]}
         errors, warnings = self.rule.check(Path("test.yaml"), data)
 
         assert len(errors) == 0
 
     def test_missing_parameters_field_passes(self):
         """Test that missing parameters field is skipped."""
-        data = {'name': 'TEST_FUNC', 'formula': 'SUM(A1:A10)'}
+        data = {"name": "TEST_FUNC", "formula": "SUM(A1:A10)"}
         errors, warnings = self.rule.check(Path("test.yaml"), data)
 
         assert len(errors) == 0
@@ -362,7 +328,7 @@ class TestRequireParameterExamplesRule:
 
     def test_non_list_parameters_field_passes(self):
         """Test that non-list parameters field is skipped."""
-        data = {'parameters': 'not a list'}
+        data = {"parameters": "not a list"}
         errors, warnings = self.rule.check(Path("test.yaml"), data)
 
         assert len(errors) == 0
@@ -370,15 +336,11 @@ class TestRequireParameterExamplesRule:
 
     def test_parameter_with_quoted_empty_string_example_fails(self):
         """Test that parameter with '""' as example fails (literal empty string)."""
-        data = {
-            'parameters': [
-                {'name': 'replacement', 'description': 'Value', 'example': ''}
-            ]
-        }
+        data = {"parameters": [{"name": "replacement", "description": "Value", "example": ""}]}
         errors, warnings = self.rule.check(Path("test.yaml"), data)
 
         assert len(errors) == 1
-        assert 'empty example' in errors[0].lower()
+        assert "empty example" in errors[0].lower()
 
     def test_parameter_with_double_quoted_example_passes(self):
         """Test that parameter with double-quoted string example passes.
@@ -386,11 +348,7 @@ class TestRequireParameterExamplesRule:
         When the YAML value is '"text"', it represents the string with quotes,
         which is a non-empty string, so it should pass.
         """
-        data = {
-            'parameters': [
-                {'name': 'text', 'description': 'Text', 'example': '""'}
-            ]
-        }
+        data = {"parameters": [{"name": "text", "description": "Text", "example": '""'}]}
         errors, warnings = self.rule.check(Path("test.yaml"), data)
 
         assert len(errors) == 0
@@ -398,10 +356,10 @@ class TestRequireParameterExamplesRule:
     def test_non_dict_parameter_element_skipped(self):
         """Test that non-dict parameter elements are skipped."""
         data = {
-            'parameters': [
-                {'name': 'param1', 'description': 'Valid', 'example': 'A1'},
-                'invalid string element',
-                {'name': 'param2', 'description': 'Also valid', 'example': 'B1'}
+            "parameters": [
+                {"name": "param1", "description": "Valid", "example": "A1"},
+                "invalid string element",
+                {"name": "param2", "description": "Also valid", "example": "B1"},
             ]
         }
         errors, warnings = self.rule.check(Path("test.yaml"), data)
@@ -411,15 +369,11 @@ class TestRequireParameterExamplesRule:
 
     def test_error_includes_file_path(self):
         """Test that error message includes the file path."""
-        data = {
-            'parameters': [
-                {'name': 'test', 'description': 'Test', 'example': ''}
-            ]
-        }
+        data = {"parameters": [{"name": "test", "description": "Test", "example": ""}]}
         errors, warnings = self.rule.check(Path("formulas/test.yaml"), data)
 
         assert len(errors) == 1
-        assert 'formulas/test.yaml' in errors[0]
+        assert "formulas/test.yaml" in errors[0]
 
 
 class TestFormulaLinter:
@@ -433,10 +387,10 @@ class TestFormulaLinter:
         """Test that linter has all expected rules registered."""
         rule_names = {rule.name for rule in self.linter.rules}
 
-        assert 'no-leading-equals' in rule_names
-        assert 'no-top-level-lambda' in rule_names
-        assert 'require-parameter-examples' in rule_names
-        assert 'valid-formula-syntax' in rule_names
+        assert "no-leading-equals" in rule_names
+        assert "no-top-level-lambda" in rule_names
+        assert "require-parameter-examples" in rule_names
+        assert "valid-formula-syntax" in rule_names
         assert len(self.linter.rules) == 4
 
     def test_lint_file_with_valid_yaml(self):
