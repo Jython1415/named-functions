@@ -22,12 +22,15 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Install test dependencies
+      - name: Set up Python environment and install test dependencies
         run: |
-          uv pip install --system pytest pytest-cov
+          uv venv
+          source .venv/bin/activate
+          uv pip install pytest pytest-cov pyyaml pyparsing
 
       - name: Run unit tests
         run: |
+          source .venv/bin/activate
           pytest tests/ -v --cov=scripts --cov-report=term-missing
 
       - name: Test linter on formulas
