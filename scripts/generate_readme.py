@@ -156,10 +156,113 @@ class FormulaParser:
             formula = self._formula_cache.get(id(ast), "") if hasattr(self, "_formula_cache") else ""
             if formula:
                 for func_name in named_functions:
-                    if re.search(r"\b" + re.escape(func_name) + r"\s*\(", formula):
-                        calls.append({"name": func_name, "args": [], "depth": 0, "node": None})
+                    # Find all occurrences of this function call
+                    pattern = r"\b" + re.escape(func_name) + r"\s*\("
+                    for match in re.finditer(pattern, formula):
+                        # Extract arguments using balanced parenthesis matching
+                        args = self._extract_args_from_formula(formula, match.end() - 1)
+                        calls.append({"name": func_name, "args": args, "depth": 0, "node": None})
 
         return sorted(calls, key=lambda c: c["depth"], reverse=True)
+
+    def _extract_args_from_formula(self, formula: str, start_paren_pos: int) -> List[str]:
+        """
+        Extract function arguments from formula using balanced parenthesis matching.
+
+        Args:
+            formula: The formula string
+            start_paren_pos: Position of the opening parenthesis
+
+        Returns:
+            List of argument strings
+        """
+        # Find the matching closing parenthesis
+        paren_count = 0
+        in_string = False
+        string_char = None
+        i = start_paren_pos
+
+        while i < len(formula):
+            char = formula[i]
+
+            # Handle string literals
+            if char in ('"', "'") and (i == 0 or formula[i-1] != '\\'):
+                if not in_string:
+                    in_string = True
+                    string_char = char
+                elif char == string_char:
+                    in_string = False
+                    string_char = None
+
+            # Count parentheses only when not in string
+            if not in_string:
+                if char == '(':
+                    paren_count += 1
+                elif char == ')':
+                    paren_count -= 1
+                    if paren_count == 0:
+                        # Found matching closing paren
+                        args_text = formula[start_paren_pos + 1:i]
+                        return self._split_arguments(args_text)
+
+            i += 1
+
+        # If we get here, no matching paren found - return empty list
+        return []
+
+    def _split_arguments(self, args_text: str) -> List[str]:
+        """
+        Split comma-separated arguments, respecting nested parentheses and quotes.
+
+        Args:
+            args_text: String containing comma-separated arguments
+
+        Returns:
+            List of argument strings
+        """
+        if not args_text.strip():
+            return []
+
+        args = []
+        current_arg = []
+        paren_count = 0
+        brace_count = 0
+        in_string = False
+        string_char = None
+
+        for i, char in enumerate(args_text):
+            # Handle string literals
+            if char in ('"', "'") and (i == 0 or args_text[i-1] != '\\'):
+                if not in_string:
+                    in_string = True
+                    string_char = char
+                elif char == string_char:
+                    in_string = False
+                    string_char = None
+
+            # Count parentheses and braces only when not in string
+            if not in_string:
+                if char == '(':
+                    paren_count += 1
+                elif char == ')':
+                    paren_count -= 1
+                elif char == '{':
+                    brace_count += 1
+                elif char == '}':
+                    brace_count -= 1
+                elif char == ',' and paren_count == 0 and brace_count == 0:
+                    # This comma is a separator
+                    args.append(''.join(current_arg).strip())
+                    current_arg = []
+                    continue
+
+            current_arg.append(char)
+
+        # Add the last argument
+        if current_arg:
+            args.append(''.join(current_arg).strip())
+
+        return args
 
 
     @staticmethod
@@ -497,11 +600,12 @@ def expand_formula(
         expanded_cache[name] = formula_text
         return formula_text
 
-    # Only process top-level calls (depth=0)
-    # Nested calls will be expanded when their parent is expanded via expand_argument
-    top_level_calls = [c for c in calls if c['depth'] == 0]
+    # Process all function calls, including those nested within LET statements
+    # Note: We process all depths because calls within LET assignments are not
+    # nested arguments but independent calls that need expansion
+    top_level_calls = calls
 
-    # Expand each top-level call
+    # Expand each function call
     result = formula_text
     for call in top_level_calls:
         func_name = call['name']

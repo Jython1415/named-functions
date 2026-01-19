@@ -317,11 +317,40 @@ v1.0.0 Extracts all data rows (excluding header rows) from a data range. This is
 **Formula**
 
 ```
-LET(
+=LET(
   header_rows, IF(OR(num_header_rows = "", ISBLANK(num_header_rows)), 1, num_header_rows),
 
   
-  DROPROWS(range, header_rows)
+  (LET(
+  total_rows, ROWS(range),
+
+  
+  _validate_zero, IF(header_rows = 0,
+    (XLOOKUP("header_rows cannot be 0", IF(FALSE, {1}), IF(FALSE, {1}))),
+    TRUE
+  ),
+
+  
+  normalized_count, IF(header_rows > 0,
+    header_rows,
+    total_rows + header_rows + 1
+  ),
+
+  
+  _validate_excess, IF(OR(normalized_count < 0, normalized_count >= total_rows),
+    (XLOOKUP("header_rows has absolute value (" & ABS(header_rows) & ") exceeds available rows (" & total_rows & ")", IF(FALSE, {1}), IF(FALSE, {1}))),
+    TRUE
+  ),
+
+  
+  rows_to_keep, total_rows - normalized_count,
+
+  
+  IF(rows_to_keep = 1,
+    CHOOSEROWS(range, normalized_count + 1),
+    CHOOSEROWS(range, SEQUENCE(rows_to_keep, 1, normalized_count + 1))
+  )
+))
 )
 ```
 
@@ -554,12 +583,74 @@ v1.0.0 Drops a specified number of rows and columns from a range (both dimension
 **Formula**
 
 ```
-LET(
+=LET(
   
-  rows_dropped, DROPROWS(range, rows),
+  rows_dropped, (LET(
+  total_rows, ROWS(range),
 
   
-  DROPCOLS(rows_dropped, cols)
+  _validate_zero, IF(rows = 0,
+    (XLOOKUP("rows cannot be 0", IF(FALSE, {1}), IF(FALSE, {1}))),
+    TRUE
+  ),
+
+  
+  normalized_count, IF(rows > 0,
+    rows,
+    total_rows + rows + 1
+  ),
+
+  
+  _validate_excess, IF(OR(normalized_count < 0, normalized_count >= total_rows),
+    (XLOOKUP("rows has absolute value (" & ABS(rows) & ") exceeds available rows (" & total_rows & ")", IF(FALSE, {1}), IF(FALSE, {1}))),
+    TRUE
+  ),
+
+  
+  rows_to_keep, total_rows - normalized_count,
+
+  
+  IF(rows_to_keep = 1,
+    CHOOSEROWS(range, normalized_count + 1),
+    CHOOSEROWS(range, SEQUENCE(rows_to_keep, 1, normalized_count + 1))
+  )
+)),
+
+  
+  (LET(
+  transposed, TRANSPOSE(rows_dropped),
+  result, (LET(
+  total_rows, ROWS(transposed),
+
+  
+  _validate_zero, IF(cols = 0,
+    (XLOOKUP("cols cannot be 0", IF(FALSE, {1}), IF(FALSE, {1}))),
+    TRUE
+  ),
+
+  
+  normalized_count, IF(cols > 0,
+    cols,
+    total_rows + cols + 1
+  ),
+
+  
+  _validate_excess, IF(OR(normalized_count < 0, normalized_count >= total_rows),
+    (XLOOKUP("cols has absolute value (" & ABS(cols) & ") exceeds available rows (" & total_rows & ")", IF(FALSE, {1}), IF(FALSE, {1}))),
+    TRUE
+  ),
+
+  
+  rows_to_keep, total_rows - normalized_count,
+
+  
+  IF(rows_to_keep = 1,
+    CHOOSEROWS(transposed, normalized_count + 1),
+    CHOOSEROWS(transposed, SEQUENCE(rows_to_keep, 1, normalized_count + 1))
+  )
+)),
+  TRANSPOSE(result)
+))
 )
 ```
 
@@ -622,9 +713,38 @@ v1.0.0 Drops the first or last N columns from a range. Positive num_cols drops f
 **Formula**
 
 ```
-LET(
+=LET(
   transposed, TRANSPOSE(range),
-  result, DROPROWS(transposed, num_cols),
+  result, (LET(
+  total_rows, ROWS(transposed),
+
+  
+  _validate_zero, IF(num_cols = 0,
+    (XLOOKUP("num_cols cannot be 0", IF(FALSE, {1}), IF(FALSE, {1}))),
+    TRUE
+  ),
+
+  
+  normalized_count, IF(num_cols > 0,
+    num_cols,
+    total_rows + num_cols + 1
+  ),
+
+  
+  _validate_excess, IF(OR(normalized_count < 0, normalized_count >= total_rows),
+    (XLOOKUP("num_cols has absolute value (" & ABS(num_cols) & ") exceeds available rows (" & total_rows & ")", IF(FALSE, {1}), IF(FALSE, {1}))),
+    TRUE
+  ),
+
+  
+  rows_to_keep, total_rows - normalized_count,
+
+  
+  IF(rows_to_keep = 1,
+    CHOOSEROWS(transposed, normalized_count + 1),
+    CHOOSEROWS(transposed, SEQUENCE(rows_to_keep, 1, normalized_count + 1))
+  )
+)),
   TRANSPOSE(result)
 )
 ```
@@ -680,12 +800,12 @@ v1.0.0 Drops the first or last N rows from a range. Positive num_rows drops from
 **Formula**
 
 ```
-LET(
+=LET(
   total_rows, ROWS(range),
 
   
   _validate_zero, IF(num_rows = 0,
-    ERROR("num_rows cannot be 0"),
+    (XLOOKUP("num_rows cannot be 0", IF(FALSE, {1}), IF(FALSE, {1}))),
     TRUE
   ),
 
@@ -697,7 +817,7 @@ LET(
 
   
   _validate_excess, IF(OR(normalized_count < 0, normalized_count >= total_rows),
-    ERROR("num_rows has absolute value (" & ABS(num_rows) & ") exceeds available rows (" & total_rows & ")"),
+    (XLOOKUP("num_rows has absolute value (" & ABS(num_rows) & ") exceeds available rows (" & total_rows & ")", IF(FALSE, {1}), IF(FALSE, {1}))),
     TRUE
   ),
 
@@ -993,12 +1113,12 @@ v1.0.0 Groups data by one or more columns and applies custom aggregation logic v
 **Formula**
 
 ```
-LET(
+=LET(
   num_rows, ROWS(data),
   num_cols, COLUMNS(data),
 
   _validate_dims, IF(OR(num_rows < 1, num_cols < 1),
-    ERROR("Data must have at least 1 row and 1 column"),
+    (XLOOKUP("Data must have at least 1 row and 1 column", IF(FALSE, {1}), IF(FALSE, {1}))),
     TRUE
   ),
 
@@ -1017,7 +1137,7 @@ LET(
       SUMPRODUCT(--(group_cols_array < 1)) > 0,
       SUMPRODUCT(--(group_cols_array > num_cols)) > 0
     ),
-    ERROR("Group column indices must be between 1 and " & num_cols),
+    (XLOOKUP("Group column indices must be between 1 and " & num_cols, IF(FALSE, {1}), IF(FALSE, {1}))),
     TRUE
   ),
 
@@ -1026,7 +1146,7 @@ LET(
       SUMPRODUCT(--(value_cols_array < 1)) > 0,
       SUMPRODUCT(--(value_cols_array > num_cols)) > 0
     ),
-    ERROR("Value column indices must be between 1 and " & num_cols),
+    (XLOOKUP("Value column indices must be between 1 and " & num_cols, IF(FALSE, {1}), IF(FALSE, {1}))),
     TRUE
   ),
 
@@ -1141,11 +1261,37 @@ v1.0.0 Extracts the header row (first row) from a data range. This is useful for
 **Formula**
 
 ```
-LET(
+=LET(
   rows, IF(OR(num_rows = "", ISBLANK(num_rows)), 1, num_rows),
 
   
-  TAKEROWS(range, rows)
+  (LET(
+  total_rows, ROWS(range),
+
+  
+  _validate_zero, IF(rows = 0,
+    (XLOOKUP("rows cannot be 0", IF(FALSE, {1}), IF(FALSE, {1}))),
+    TRUE
+  ),
+
+  
+  normalized_count, IF(rows > 0,
+    rows,
+    total_rows + rows + 1
+  ),
+
+  
+  _validate_excess, IF(OR(normalized_count < 0, normalized_count > total_rows),
+    (XLOOKUP("rows has absolute value (" & ABS(rows) & ") exceeding total rows (" & total_rows & ")", IF(FALSE, {1}), IF(FALSE, {1}))),
+    TRUE
+  ),
+
+  
+  IF(normalized_count = 1,
+    CHOOSEROWS(range, 1),
+    CHOOSEROWS(range, SEQUENCE(normalized_count))
+  )
+))
 )
 ```
 
@@ -1200,18 +1346,7 @@ v1.0.0 Stacks two arrays horizontally, padding shorter arrays with blank cells t
 **Formula**
 
 ```
-=LET(
-  rows1, ROWS(array1),
-  rows2, ROWS(array2),
-  max_rows, MAX(rows1, rows2),
-  padded1, IF(rows1 < max_rows,
-              VSTACK(array1, MAKEARRAY(max_rows - rows1, COLUMNS(array1), LAMBDA(r, c, (IF(,,))))),
-              array1),
-  padded2, IF(rows2 < max_rows,
-              VSTACK(array2, MAKEARRAY(max_rows - rows2, COLUMNS(array2), LAMBDA(r, c, (IF(,,))))),
-              array2),
-  HSTACK(padded1, padded2)
-)
+HSTACKFILL(array1, array2, (IF(,,)))
 ```
 
 #### array1
@@ -1432,9 +1567,37 @@ v1.0.0 Excludes specified columns from a range. This is the negation of CHOOSECO
 **Formula**
 
 ```
-LET(
+=LET(
   transposed, TRANSPOSE(range),
-  result, OMITROWS(transposed, col_nums),
+  result, (LET(
+  total_rows, ROWS(transposed),
+
+  
+  rows_to_omit, FLATTEN(col_nums),
+
+  
+  normalized_omit, MAKEARRAY(ROWS(rows_to_omit), COLUMNS(rows_to_omit), LAMBDA(r, c,
+    LET(
+      idx, INDEX(rows_to_omit, r, c),
+      IF(idx < 0, total_rows + idx + 1, idx)
+    )
+  )),
+
+  
+  all_rows, SEQUENCE(total_rows, 1),
+
+  
+  rows_to_keep, FILTER(all_rows, ISNA(MATCH(all_rows, FLATTEN(normalized_omit), 0))),
+
+  
+  _validate, IF(ROWS(rows_to_keep) = 0,
+    (XLOOKUP("Cannot omit all rows from transposed", IF(FALSE, {1}), IF(FALSE, {1}))),
+    TRUE
+  ),
+
+  
+  CHOOSEROWS(transposed, rows_to_keep)
+)),
   TRANSPOSE(result)
 )
 ```
@@ -1490,7 +1653,7 @@ v1.0.0 Excludes specified rows from a range. This is the negation of CHOOSEROWS 
 **Formula**
 
 ```
-LET(
+=LET(
   total_rows, ROWS(range),
 
   
@@ -1512,7 +1675,7 @@ LET(
 
   
   _validate, IF(ROWS(rows_to_keep) = 0,
-    ERROR("Cannot omit all rows from range"),
+    (XLOOKUP("Cannot omit all rows from range", IF(FALSE, {1}), IF(FALSE, {1}))),
     TRUE
   ),
 
@@ -1619,16 +1782,16 @@ v1.0.0 Applies multiple SUBSTITUTE operations sequentially using a two-column ma
 **Formula**
 
 ```
-LET(
+=LET(
   num_mappings, ROWS(mappings),
 
   _validate_mappings, IF(COLUMNS(mappings) <> 2,
-    ERROR("Mappings must be a two-column range"),
+    (XLOOKUP("Mappings must be a two-column range", IF(FALSE, {1}), IF(FALSE, {1}))),
     TRUE
   ),
 
   _validate_rows, IF(num_mappings < 1,
-    ERROR("Mappings must have at least 1 row"),
+    (XLOOKUP("Mappings must have at least 1 row", IF(FALSE, {1}), IF(FALSE, {1}))),
     TRUE
   ),
 
@@ -1713,12 +1876,68 @@ v1.0.0 Takes a rectangular region from a range (both rows and columns). This is 
 **Formula**
 
 ```
-LET(
+=LET(
   
-  rows_taken, TAKEROWS(range, rows),
+  rows_taken, (LET(
+  total_rows, ROWS(range),
 
   
-  TAKECOLS(rows_taken, cols)
+  _validate_zero, IF(rows = 0,
+    (XLOOKUP("rows cannot be 0", IF(FALSE, {1}), IF(FALSE, {1}))),
+    TRUE
+  ),
+
+  
+  normalized_count, IF(rows > 0,
+    rows,
+    total_rows + rows + 1
+  ),
+
+  
+  _validate_excess, IF(OR(normalized_count < 0, normalized_count > total_rows),
+    (XLOOKUP("rows has absolute value (" & ABS(rows) & ") exceeding total rows (" & total_rows & ")", IF(FALSE, {1}), IF(FALSE, {1}))),
+    TRUE
+  ),
+
+  
+  IF(normalized_count = 1,
+    CHOOSEROWS(range, 1),
+    CHOOSEROWS(range, SEQUENCE(normalized_count))
+  )
+)),
+
+  
+  (LET(
+  transposed, TRANSPOSE(rows_taken),
+  result, (LET(
+  total_rows, ROWS(transposed),
+
+  
+  _validate_zero, IF(cols = 0,
+    (XLOOKUP("cols cannot be 0", IF(FALSE, {1}), IF(FALSE, {1}))),
+    TRUE
+  ),
+
+  
+  normalized_count, IF(cols > 0,
+    cols,
+    total_rows + cols + 1
+  ),
+
+  
+  _validate_excess, IF(OR(normalized_count < 0, normalized_count > total_rows),
+    (XLOOKUP("cols has absolute value (" & ABS(cols) & ") exceeding total rows (" & total_rows & ")", IF(FALSE, {1}), IF(FALSE, {1}))),
+    TRUE
+  ),
+
+  
+  IF(normalized_count = 1,
+    CHOOSEROWS(transposed, 1),
+    CHOOSEROWS(transposed, SEQUENCE(normalized_count))
+  )
+)),
+  TRANSPOSE(result)
+))
 )
 ```
 
@@ -1787,9 +2006,35 @@ v1.0.0 Takes the first or last N columns from a range. Positive num_cols takes f
 **Formula**
 
 ```
-LET(
+=LET(
   transposed, TRANSPOSE(range),
-  result, TAKEROWS(transposed, num_cols),
+  result, (LET(
+  total_rows, ROWS(transposed),
+
+  
+  _validate_zero, IF(num_cols = 0,
+    (XLOOKUP("num_cols cannot be 0", IF(FALSE, {1}), IF(FALSE, {1}))),
+    TRUE
+  ),
+
+  
+  normalized_count, IF(num_cols > 0,
+    num_cols,
+    total_rows + num_cols + 1
+  ),
+
+  
+  _validate_excess, IF(OR(normalized_count < 0, normalized_count > total_rows),
+    (XLOOKUP("num_cols has absolute value (" & ABS(num_cols) & ") exceeding total rows (" & total_rows & ")", IF(FALSE, {1}), IF(FALSE, {1}))),
+    TRUE
+  ),
+
+  
+  IF(normalized_count = 1,
+    CHOOSEROWS(transposed, 1),
+    CHOOSEROWS(transposed, SEQUENCE(normalized_count))
+  )
+)),
   TRANSPOSE(result)
 )
 ```
@@ -1845,12 +2090,12 @@ v1.0.0 Takes the first or last N rows from a range. Positive num_rows takes from
 **Formula**
 
 ```
-LET(
+=LET(
   total_rows, ROWS(range),
 
   
   _validate_zero, IF(num_rows = 0,
-    ERROR("num_rows cannot be 0"),
+    (XLOOKUP("num_rows cannot be 0", IF(FALSE, {1}), IF(FALSE, {1}))),
     TRUE
   ),
 
@@ -1862,7 +2107,7 @@ LET(
 
   
   _validate_excess, IF(OR(normalized_count < 0, normalized_count > total_rows),
-    ERROR("num_rows has absolute value (" & ABS(num_rows) & ") exceeding total rows (" & total_rows & ")"),
+    (XLOOKUP("num_rows has absolute value (" & ABS(num_rows) & ") exceeding total rows (" & total_rows & ")", IF(FALSE, {1}), IF(FALSE, {1}))),
     TRUE
   ),
 
@@ -2076,22 +2321,22 @@ v1.0.2 Transforms wide-format data into long-format (tidy data) by unpivoting sp
 **Formula**
 
 ```
-LET(
+=LET(
   fc, IF(OR(fixedcols = "", ISBLANK(fixedcols)), 1, fixedcols),
   ac, IF(OR(attributecol = "", ISBLANK(attributecol)), "Attribute", attributecol),
   vc, IF(OR(valuecol = "", ISBLANK(valuecol)), "Value", valuecol),
-  fillna_val, BLANKTOEMPTY(fillna),
+  fillna_val, (MAP(fillna, LAMBDA(v, IF(ISBLANK(v), "", v)))),
   
   num_rows, ROWS(data),
   num_cols, COLUMNS(data),
   
   _validate_dims, IF(OR(num_rows < 2, num_cols < 2),
-    ERROR("Data must have at least 2 rows and 2 columns"),
+    (XLOOKUP("Data must have at least 2 rows and 2 columns", IF(FALSE, {1}), IF(FALSE, {1}))),
     TRUE
   ),
   
   _validate_fc, IF(OR(fc < 1, fc >= num_cols),
-    ERROR("fixedcols must be between 1 and " & (num_cols - 1)),
+    (XLOOKUP("fixedcols must be between 1 and " & (num_cols - 1), IF(FALSE, {1}), IF(FALSE, {1}))),
     TRUE
   ),
   
@@ -2107,7 +2352,7 @@ LET(
             search_name, INDEX(flat_selection, 1, c),
             match_result, MATCH(search_name, all_headers, 0),
             IF(ISNA(match_result),
-              ERROR("Column '" & search_name & "' not found in headers"),
+              (XLOOKUP("Column '" & search_name & "' not found in headers", IF(FALSE, {1}), IF(FALSE, {1}))),
               match_result
             )
           )
@@ -2121,7 +2366,7 @@ LET(
             SUMPRODUCT(--(flat_indices < 1)) > 0,
             SUMPRODUCT(--(flat_indices > num_cols)) > 0
           ),
-          ERROR("Column indices must be between 1 and " & num_cols),
+          (XLOOKUP("Column indices must be between 1 and " & num_cols, IF(FALSE, {1}), IF(FALSE, {1}))),
           TRUE
         ),
         flat_indices
@@ -2266,18 +2511,7 @@ v1.0.0 Stacks two arrays vertically, padding narrower arrays with blank cells to
 **Formula**
 
 ```
-=LET(
-  cols1, COLUMNS(array1),
-  cols2, COLUMNS(array2),
-  max_cols, MAX(cols1, cols2),
-  padded1, IF(cols1 < max_cols,
-              HSTACK(array1, MAKEARRAY(ROWS(array1), max_cols - cols1, LAMBDA(r, c, (IF(,,))))),
-              array1),
-  padded2, IF(cols2 < max_cols,
-              HSTACK(array2, MAKEARRAY(ROWS(array2), max_cols - cols2, LAMBDA(r, c, (IF(,,))))),
-              array2),
-  VSTACK(padded1, padded2)
-)
+VSTACKFILL(array1, array2, (IF(,,)))
 ```
 
 #### array1
