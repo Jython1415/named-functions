@@ -78,7 +78,8 @@ class FormulaParser:
         number = pyparsing_common.number()
 
         # Cell reference patterns: A1, $A$1, etc.
-        cell_ref = Word(alphas + "$", alphanums + "$")
+        # Include underscore to prevent partial matching of identifiers like header_rows
+        cell_ref = Word(alphas + "$", alphanums + "$" + "_")
 
         # Range reference: A1:B10, A:A, 1:1, etc.
         # Use Regex for flexibility with sheet references and complex patterns
@@ -122,8 +123,9 @@ class FormulaParser:
         # Expression: one or more terms, possibly separated by operators
         # We use ZeroOrMore to handle any number of operator-term pairs
         # This is permissive - we don't validate syntax, just extract function calls
+        # Group the expression to prevent it from being flattened when used in DelimitedList
         from pyparsing import ZeroOrMore
-        expression <<= term + ZeroOrMore(operators.suppress() + term)
+        expression <<= Group(term + ZeroOrMore(operators.suppress() + term))
 
         # For parsing the entire formula, we allow multiple expressions
         # This handles cases like: FUNC(x) + FUNC(y)
@@ -216,7 +218,7 @@ class FormulaParser:
 
         Args:
             func_name: Name of the function
-            args: List of arguments (can be strings or ParseResults)
+            args: List of arguments (can be strings, ParseResults, or lists)
 
         Returns:
             Reconstructed function call string
@@ -232,6 +234,19 @@ class FormulaParser:
                 return arg
             elif isinstance(arg, (int, float)):
                 return str(arg)
+            elif isinstance(arg, list):
+                # Handle list arguments (from grouped expressions)
+                # Recursively stringify each item
+                # For expressions with multiple terms, we need to infer the operators
+                # In most cases, multiple terms in a list come from & concatenation
+                stringified_items = [stringify(item) for item in arg]
+                # If there are multiple items, they were likely separated by & operator
+                if len(stringified_items) > 1:
+                    return " & ".join(stringified_items)
+                elif len(stringified_items) == 1:
+                    return stringified_items[0]
+                else:
+                    return ""
             elif isinstance(arg, dict):
                 # Handle dict representation from asDict()
                 if 'function' in arg:
@@ -427,6 +442,23 @@ def substitute_arguments(
             arg_str = arg
         elif isinstance(arg, (int, float)):
             arg_str = str(arg)
+        elif isinstance(arg, list):
+            # Handle list arguments (from grouped expressions)
+            # Use the same stringify logic as reconstruct_call
+            def stringify_item(item):
+                if isinstance(item, tuple) and len(item) == 2 and item[0] == '__STRING_LITERAL__':
+                    return f'"{item[1]}"'
+                elif isinstance(item, dict) and 'function' in item:
+                    return FormulaParser.reconstruct_call(item['function'], item.get('args', []))
+                elif isinstance(item, ParseResults):
+                    if hasattr(item, 'asDict'):
+                        d = item.asDict()
+                        if 'function' in d:
+                            return FormulaParser.reconstruct_call(d['function'], d.get('args', []))
+                    return str(item)
+                else:
+                    return str(item)
+            arg_str = " ".join(stringify_item(item) for item in arg)
         elif isinstance(arg, ParseResults):
             # Reconstruct from parse results
             if hasattr(arg, 'asDict'):
@@ -464,6 +496,11 @@ def expand_argument(
         return f"{chr(34)}{arg[1]}{chr(34)}"
     if isinstance(arg, (int, float)):
         return str(arg)
+    # Handle list arguments (from grouped expressions)
+    if isinstance(arg, list):
+        # Recursively expand each item in the list
+        expanded_items = [expand_argument(item, all_formulas, parser, expanded_cache) for item in arg]
+        return " ".join(expanded_items)
     # Handle dict representation (from nested ParseResults converted to dict)
     if isinstance(arg, dict) and "function" in arg:
         func_name = arg["function"]

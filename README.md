@@ -338,7 +338,7 @@ v1.0.0 Extracts all data rows (excluding header rows) from a data range. This is
 
   
   _validate_excess, IF(OR(normalized_count < 0, normalized_count >= total_rows),
-    (XLOOKUP("header_rows has absolute value (" & ABS(header_rows) & ") exceeds available rows (" & total_rows & ")", IF(FALSE, {1}), IF(FALSE, {1}))),
+    (XLOOKUP("header_rows has absolute value (" ABS(header_rows) ") exceeds available rows (" total_rows ")", IF(FALSE, {1}), IF(FALSE, {1}))),
     TRUE
   ),
 
@@ -405,7 +405,7 @@ v1.0.6 Removes empty or incomplete rows and columns from sparse data. Use mode t
 **Formula**
 
 ```
-=LET(
+LET(
   actual_mode, IF(OR(mode="", mode=0), "both", LOWER(TRIM(mode))),
   mode_parts, SPLIT(actual_mode, "-"),
   dimension, INDEX(mode_parts, 1),
@@ -426,7 +426,7 @@ v1.0.6 Removes empty or incomplete rows and columns from sparse data. Use mode t
             FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((IFERROR(LEN(TRIM(r)) > 0, TRUE)) * 1) >= threshold))),
             FILTER(range, BYROW(range, LAMBDA(r, COUNTA(r) >= threshold)))
           ),
-          IF(ISNA(ROWS(result)), (IF(,,)), result)
+          IF(ISNA(ROWS(result)), BLANK(), result)
         ),
         range
       ),
@@ -439,7 +439,7 @@ v1.0.6 Removes empty or incomplete rows and columns from sparse data. Use mode t
             FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((IFERROR(LEN(TRIM(c)) > 0, TRUE)) * 1) >= threshold))),
             FILTER(transposed, BYROW(transposed, LAMBDA(c, COUNTA(c) >= threshold)))
           ),
-          IF(ISNA(ROWS(result)), (IF(,,)), TRANSPOSE(result))
+          IF(ISNA(ROWS(result)), BLANK(), TRANSPOSE(result))
         ),
         rows_filtered
       ),
@@ -521,7 +521,7 @@ v2.0.0 Removes rows that are entirely blank from sparse data. This is a convenie
             FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((IFERROR(LEN(TRIM(r)) > 0, TRUE)) * 1) >= threshold))),
             FILTER(range, BYROW(range, LAMBDA(r, COUNTA(r) >= threshold)))
           ),
-          IF(ISNA(ROWS(result)), (IF(,,)), result)
+          IF(ISNA(ROWS(result)), BLANK(), result)
         ),
         range
       ),
@@ -534,7 +534,7 @@ v2.0.0 Removes rows that are entirely blank from sparse data. This is a convenie
             FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((IFERROR(LEN(TRIM(c)) > 0, TRUE)) * 1) >= threshold))),
             FILTER(transposed, BYROW(transposed, LAMBDA(c, COUNTA(c) >= threshold)))
           ),
-          IF(ISNA(ROWS(result)), (IF(,,)), TRANSPOSE(result))
+          IF(ISNA(ROWS(result)), BLANK(), TRANSPOSE(result))
         ),
         rows_filtered
       ),
@@ -602,7 +602,7 @@ v1.0.0 Drops a specified number of rows and columns from a range (both dimension
 
   
   _validate_excess, IF(OR(normalized_count < 0, normalized_count >= total_rows),
-    (XLOOKUP("rows has absolute value (" & ABS(rows) & ") exceeds available rows (" & total_rows & ")", IF(FALSE, {1}), IF(FALSE, {1}))),
+    (XLOOKUP("rows has absolute value (" ABS(rows) ") exceeds available rows (" total_rows ")", IF(FALSE, {1}), IF(FALSE, {1}))),
     TRUE
   ),
 
@@ -636,7 +636,7 @@ v1.0.0 Drops a specified number of rows and columns from a range (both dimension
 
   
   _validate_excess, IF(OR(normalized_count < 0, normalized_count >= total_rows),
-    (XLOOKUP("cols has absolute value (" & ABS(cols) & ") exceeds available rows (" & total_rows & ")", IF(FALSE, {1}), IF(FALSE, {1}))),
+    (XLOOKUP("cols has absolute value (" ABS(cols) ") exceeds available rows (" total_rows ")", IF(FALSE, {1}), IF(FALSE, {1}))),
     TRUE
   ),
 
@@ -732,7 +732,7 @@ v1.0.0 Drops the first or last N columns from a range. Positive num_cols drops f
 
   
   _validate_excess, IF(OR(normalized_count < 0, normalized_count >= total_rows),
-    (XLOOKUP("num_cols has absolute value (" & ABS(num_cols) & ") exceeds available rows (" & total_rows & ")", IF(FALSE, {1}), IF(FALSE, {1}))),
+    (XLOOKUP("num_cols has absolute value (" ABS(num_cols) ") exceeds available rows (" total_rows ")", IF(FALSE, {1}), IF(FALSE, {1}))),
     TRUE
   ),
 
@@ -817,7 +817,7 @@ v1.0.0 Drops the first or last N rows from a range. Positive num_rows drops from
 
   
   _validate_excess, IF(OR(normalized_count < 0, normalized_count >= total_rows),
-    (XLOOKUP("num_rows has absolute value (" & ABS(num_rows) & ") exceeds available rows (" & total_rows & ")", IF(FALSE, {1}), IF(FALSE, {1}))),
+    (XLOOKUP("num_rows has absolute value (" ABS(num_rows) ") exceeds available rows (" total_rows ")", IF(FALSE, {1}), IF(FALSE, {1}))),
     TRUE
   ),
 
@@ -961,7 +961,7 @@ v1.0.0 Filters rows and columns based on error status. Use mode to control which
 **Formula**
 
 ```
-=LET(
+LET(
   actual_mode, IF(OR(mode="", mode=0), "both", LOWER(TRIM(mode))),
   mode_parts, SPLIT(actual_mode, "-"),
   dimension, INDEX(mode_parts, 1),
@@ -979,10 +979,10 @@ v1.0.0 Filters rows and columns based on error status. Use mode to control which
         LET(
           num_cols, COLUMNS(range),
           IF(has_any,
-            IFNA(FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((ISERROR(r)) * 1) > 0))), (IF(,,))),
+            IFNA(FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((ISERROR(r)) * 1) > 0))), BLANK()),
             IF(has_all,
-              IFNA(FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((ISERROR(r)) * 1) = num_cols))), (IF(,,))),
-              IFNA(FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((ISERROR(r)) * 1) = 0))), (IF(,,)))
+              IFNA(FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((ISERROR(r)) * 1) = num_cols))), BLANK()),
+              IFNA(FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((ISERROR(r)) * 1) = 0))), BLANK())
             )
           )
         ),
@@ -995,10 +995,10 @@ v1.0.0 Filters rows and columns based on error status. Use mode to control which
           num_rows, ROWS(rows_filtered),
           TRANSPOSE(
             IF(has_any,
-              IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((ISERROR(c)) * 1) > 0))), (IF(,,))),
+              IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((ISERROR(c)) * 1) > 0))), BLANK()),
               IF(has_all,
-                IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((ISERROR(c)) * 1) = num_rows))), (IF(,,))),
-                IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((ISERROR(c)) * 1) = 0))), (IF(,,)))
+                IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((ISERROR(c)) * 1) = num_rows))), BLANK()),
+                IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((ISERROR(c)) * 1) = 0))), BLANK())
               )
             )
           )
@@ -1113,12 +1113,12 @@ v1.0.0 Groups data by one or more columns and applies custom aggregation logic v
 **Formula**
 
 ```
-=LET(
+LET(
   num_rows, ROWS(data),
   num_cols, COLUMNS(data),
 
   _validate_dims, IF(OR(num_rows < 1, num_cols < 1),
-    (XLOOKUP("Data must have at least 1 row and 1 column", IF(FALSE, {1}), IF(FALSE, {1}))),
+    ERROR("Data must have at least 1 row and 1 column"),
     TRUE
   ),
 
@@ -1137,7 +1137,7 @@ v1.0.0 Groups data by one or more columns and applies custom aggregation logic v
       SUMPRODUCT(--(group_cols_array < 1)) > 0,
       SUMPRODUCT(--(group_cols_array > num_cols)) > 0
     ),
-    (XLOOKUP("Group column indices must be between 1 and " & num_cols, IF(FALSE, {1}), IF(FALSE, {1}))),
+    ERROR("Group column indices must be between 1 and " & num_cols),
     TRUE
   ),
 
@@ -1146,7 +1146,7 @@ v1.0.0 Groups data by one or more columns and applies custom aggregation logic v
       SUMPRODUCT(--(value_cols_array < 1)) > 0,
       SUMPRODUCT(--(value_cols_array > num_cols)) > 0
     ),
-    (XLOOKUP("Value column indices must be between 1 and " & num_cols, IF(FALSE, {1}), IF(FALSE, {1}))),
+    ERROR("Value column indices must be between 1 and " & num_cols),
     TRUE
   ),
 
@@ -1282,7 +1282,7 @@ v1.0.0 Extracts the header row (first row) from a data range. This is useful for
 
   
   _validate_excess, IF(OR(normalized_count < 0, normalized_count > total_rows),
-    (XLOOKUP("rows has absolute value (" & ABS(rows) & ") exceeding total rows (" & total_rows & ")", IF(FALSE, {1}), IF(FALSE, {1}))),
+    (XLOOKUP("rows has absolute value (" ABS(rows) ") exceeding total rows (" total_rows ")", IF(FALSE, {1}), IF(FALSE, {1}))),
     TRUE
   ),
 
@@ -1895,7 +1895,7 @@ v1.0.0 Takes a rectangular region from a range (both rows and columns). This is 
 
   
   _validate_excess, IF(OR(normalized_count < 0, normalized_count > total_rows),
-    (XLOOKUP("rows has absolute value (" & ABS(rows) & ") exceeding total rows (" & total_rows & ")", IF(FALSE, {1}), IF(FALSE, {1}))),
+    (XLOOKUP("rows has absolute value (" ABS(rows) ") exceeding total rows (" total_rows ")", IF(FALSE, {1}), IF(FALSE, {1}))),
     TRUE
   ),
 
@@ -1926,7 +1926,7 @@ v1.0.0 Takes a rectangular region from a range (both rows and columns). This is 
 
   
   _validate_excess, IF(OR(normalized_count < 0, normalized_count > total_rows),
-    (XLOOKUP("cols has absolute value (" & ABS(cols) & ") exceeding total rows (" & total_rows & ")", IF(FALSE, {1}), IF(FALSE, {1}))),
+    (XLOOKUP("cols has absolute value (" ABS(cols) ") exceeding total rows (" total_rows ")", IF(FALSE, {1}), IF(FALSE, {1}))),
     TRUE
   ),
 
@@ -2025,7 +2025,7 @@ v1.0.0 Takes the first or last N columns from a range. Positive num_cols takes f
 
   
   _validate_excess, IF(OR(normalized_count < 0, normalized_count > total_rows),
-    (XLOOKUP("num_cols has absolute value (" & ABS(num_cols) & ") exceeding total rows (" & total_rows & ")", IF(FALSE, {1}), IF(FALSE, {1}))),
+    (XLOOKUP("num_cols has absolute value (" ABS(num_cols) ") exceeding total rows (" total_rows ")", IF(FALSE, {1}), IF(FALSE, {1}))),
     TRUE
   ),
 
@@ -2107,7 +2107,7 @@ v1.0.0 Takes the first or last N rows from a range. Positive num_rows takes from
 
   
   _validate_excess, IF(OR(normalized_count < 0, normalized_count > total_rows),
-    (XLOOKUP("num_rows has absolute value (" & ABS(num_rows) & ") exceeding total rows (" & total_rows & ")", IF(FALSE, {1}), IF(FALSE, {1}))),
+    (XLOOKUP("num_rows has absolute value (" ABS(num_rows) ") exceeding total rows (" total_rows ")", IF(FALSE, {1}), IF(FALSE, {1}))),
     TRUE
   ),
 
@@ -2321,22 +2321,22 @@ v1.0.2 Transforms wide-format data into long-format (tidy data) by unpivoting sp
 **Formula**
 
 ```
-=LET(
+LET(
   fc, IF(OR(fixedcols = "", ISBLANK(fixedcols)), 1, fixedcols),
   ac, IF(OR(attributecol = "", ISBLANK(attributecol)), "Attribute", attributecol),
   vc, IF(OR(valuecol = "", ISBLANK(valuecol)), "Value", valuecol),
-  fillna_val, (MAP(fillna, LAMBDA(v, IF(ISBLANK(v), "", v)))),
+  fillna_val, BLANKTOEMPTY(fillna),
   
   num_rows, ROWS(data),
   num_cols, COLUMNS(data),
   
   _validate_dims, IF(OR(num_rows < 2, num_cols < 2),
-    (XLOOKUP("Data must have at least 2 rows and 2 columns", IF(FALSE, {1}), IF(FALSE, {1}))),
+    ERROR("Data must have at least 2 rows and 2 columns"),
     TRUE
   ),
   
   _validate_fc, IF(OR(fc < 1, fc >= num_cols),
-    (XLOOKUP("fixedcols must be between 1 and " & (num_cols - 1), IF(FALSE, {1}), IF(FALSE, {1}))),
+    ERROR("fixedcols must be between 1 and " & (num_cols - 1)),
     TRUE
   ),
   
@@ -2352,7 +2352,7 @@ v1.0.2 Transforms wide-format data into long-format (tidy data) by unpivoting sp
             search_name, INDEX(flat_selection, 1, c),
             match_result, MATCH(search_name, all_headers, 0),
             IF(ISNA(match_result),
-              (XLOOKUP("Column '" & search_name & "' not found in headers", IF(FALSE, {1}), IF(FALSE, {1}))),
+              ERROR("Column '" & search_name & "' not found in headers"),
               match_result
             )
           )
@@ -2366,7 +2366,7 @@ v1.0.2 Transforms wide-format data into long-format (tidy data) by unpivoting sp
             SUMPRODUCT(--(flat_indices < 1)) > 0,
             SUMPRODUCT(--(flat_indices > num_cols)) > 0
           ),
-          (XLOOKUP("Column indices must be between 1 and " & num_cols, IF(FALSE, {1}), IF(FALSE, {1}))),
+          ERROR("Column indices must be between 1 and " & num_cols),
           TRUE
         ),
         flat_indices
