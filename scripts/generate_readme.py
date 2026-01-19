@@ -109,10 +109,11 @@ class FormulaParser:
         # Arithmetic: +, -, *, /, ^
         # String concatenation: &
         # Comparison: =, <>, <, >, <=, >=
-        # Note: We define these but don't strictly parse operator precedence
+        # Note: : is NOT an operator - it's handled by range_ref pattern
+        # We define these but don't strictly parse operator precedence
         # We just need them recognized so parsing doesn't stop at them
         from pyparsing import one_of
-        operators = one_of("+ - * / ^ & = <> < > <= >= :")
+        operators = one_of("+ - * / ^ & = <> < > <= >=")
 
         # Basic term: can be a function call, string, number, array, range, or identifier
         # Order matters: more specific patterns first
@@ -253,7 +254,7 @@ class FormulaParser:
 
         # Operators
         from pyparsing import one_of
-        operators = one_of("+ - * / ^ & = <> < > <= >= :")
+        operators = one_of("+ - * / ^ & = <> < > <= >=")
 
         # Parenthesized expression (for handling nested parens like (num_cols - 1))
         paren_expr = Forward()
@@ -744,8 +745,12 @@ def expand_formula(
     if calls and result.lstrip('=').strip() == original_formula_text.lstrip('=').strip():
         func_names = ', '.join(sorted({c['name'] for c in calls}))
         raise ValidationError(
-            f"{name}: Formula calls {func_names} but expansion failed. "
-            f"Parser may have failed to parse zero-argument calls or complex syntax."
+            f"{name}: Formula expansion failed - calls to {func_names} were not expanded.\n"
+            f"  This indicates a parser bug. The formula may contain:\n"
+            f"  - Zero-argument function calls (e.g., BLANK())\n"
+            f"  - Complex nested structures\n"
+            f"  - Unsupported syntax that the parser cannot handle\n"
+            f"  Original formula: {original_formula_text[:100]}{'...' if len(original_formula_text) > 100 else ''}"
         )
 
     expanded_cache[name] = result
@@ -843,7 +848,7 @@ def generate_formula_list(formulas: List[Dict[str, Any]]) -> str:
         except Exception as e:
             error_msg = f"{formula['name']}: {e}"
             expansion_failures.append(error_msg)
-            print(f"  ✗ Failed to expand {formula['name']}: {e}")
+            print(f"  ✗ Failed to expand {formula['name']}: {e}", file=sys.stderr)
             # Use original formula if expansion fails (with comments stripped)
             expanded_cache[formula['name']] = strip_comments(formula['formula']).strip()
 
@@ -851,7 +856,10 @@ def generate_formula_list(formulas: List[Dict[str, Any]]) -> str:
     if expansion_failures:
         failure_details = "\n  - ".join(expansion_failures)
         raise ValidationError(
-            f"Formula expansion failures detected:\n  - {failure_details}"
+            f"❌ Formula expansion failures detected ({len(expansion_failures)} formula(s)):\n"
+            f"  - {failure_details}\n\n"
+            f"These formulas must be fixed before the README can be generated.\n"
+            f"Run the tests to help diagnose the issue: pytest tests/test_formula_parser.py -v"
         )
 
     # Generate summary list
