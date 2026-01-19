@@ -1,0 +1,47 @@
+name: Run Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install test dependencies
+        run: |
+          uv pip install --system pytest pytest-cov
+
+      - name: Run unit tests
+        run: |
+          pytest tests/ -v --cov=scripts --cov-report=term-missing
+
+      - name: Test linter on formulas
+        run: |
+          uv run scripts/lint_formulas.py
+
+      - name: Test README generation
+        run: |
+          uv run scripts/generate_readme.py
+
+      - name: Verify README is up to date
+        run: |
+          if ! git diff --quiet README.md; then
+            echo "ERROR: README.md is out of date. Please run 'uv run scripts/generate_readme.py' locally."
+            git diff README.md
+            exit 1
+          fi
