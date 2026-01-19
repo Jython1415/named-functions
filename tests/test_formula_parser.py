@@ -117,11 +117,7 @@ class TestBasicParsing:
 
 
 class TestLETAndLAMBDA:
-    """Test parsing of LET and LAMBDA structures.
-
-    These tests currently FAIL with pyparsing but work with regex fallback.
-    They define the target specification for parser improvements.
-    """
+    """Test parsing of LET and LAMBDA structures."""
 
     def setup_method(self):
         """Initialize parser before each test."""
@@ -291,10 +287,7 @@ class TestStringHandling:
 
 
 class TestArraysAndRanges:
-    """Test parsing with array literals and range references.
-
-    These features are NOT in pyparsing grammar and rely on regex fallback.
-    """
+    """Test parsing with array literals and range references."""
 
     def setup_method(self):
         """Initialize parser before each test."""
@@ -370,10 +363,7 @@ class TestArraysAndRanges:
 
 
 class TestOperators:
-    """Test parsing formulas with operators.
-
-    Operators are NOT in pyparsing grammar and rely on regex fallback.
-    """
+    """Test parsing formulas with operators."""
 
     def setup_method(self):
         """Initialize parser before each test."""
@@ -658,18 +648,6 @@ class TestParserMechanics:
     def setup_method(self):
         """Initialize parser before each test."""
         self.parser = FormulaParser()
-
-    def test_parser_caches_formula_text(self):
-        """Test that parser stores original formula for regex fallback."""
-        formula = "FUNC(x, y)"
-        named_functions = {"FUNC"}
-
-        ast = self.parser.parse(formula)
-
-        # The parser should cache the formula text
-        assert hasattr(self.parser, '_formula_cache')
-        assert id(ast) in self.parser._formula_cache
-        assert self.parser._formula_cache[id(ast)] == formula
 
     def test_extract_calls_returns_sorted_by_depth(self):
         """Test that extract_function_calls returns calls sorted by depth."""

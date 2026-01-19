@@ -57,7 +57,6 @@ class FormulaParser:
 
     def __init__(self):
         """Initialize the parser with grammar definition."""
-        self._formula_cache = {}  # Store original formulas since ParseResults doesn't allow attributes
         # Define basic tokens
         identifier = Word(alphas + "_", alphanums + "_")
         lparen = Literal("(")
@@ -148,19 +147,8 @@ class FormulaParser:
         """
         # Normalize: strip leading = and whitespace
         normalized = formula.lstrip('=').strip()
-        try:
-            # Try to parse the entire formula with parseAll=True
-            result = self.grammar.parse_string(normalized, parse_all=True)
-            cache_id = id(result)
-            self._formula_cache[cache_id] = normalized
-            return result
-        except ParseException:
-            # If parseAll=True fails, try with parseAll=False
-            # This handles cases where the formula has syntax we don't fully support
-            result = self.grammar.parse_string(normalized, parse_all=False)
-            cache_id = id(result)
-            self._formula_cache[cache_id] = normalized
-            return result
+        result = self.grammar.parse_string(normalized, parse_all=True)
+        return result
 
     def extract_function_calls(self, ast: ParseResults, named_functions: Set[str]) -> List[Dict[str, Any]]:
         """
@@ -210,89 +198,8 @@ class FormulaParser:
 
         walk(ast)
 
-        # If AST walk didn't find calls, try scanning the original formula
-        # This handles cases where pyparsing couldn't fully parse complex structures
-        if not calls:
-            # Get original formula from cache
-            cache_id = id(ast)
-            if cache_id in self._formula_cache:
-                formula = self._formula_cache[cache_id]
-                calls = self._scan_for_calls(formula, named_functions)
-
         # Return calls sorted by depth (deepest first for bottom-up expansion)
         return sorted(calls, key=lambda c: c["depth"], reverse=True)
-
-    def _scan_for_calls(self, formula: str, named_functions: Set[str]) -> List[Dict[str, Any]]:
-        """
-        Scan formula text for function calls using pattern matching.
-
-        This is a fallback when AST walking fails on complex formulas.
-
-        Args:
-            formula: Formula text to scan
-            named_functions: Set of function names to look for
-
-        Returns:
-            List of function call dictionaries
-        """
-        # Build a grammar for just function calls
-        identifier = Word(alphas + "_", alphanums + "_")
-        lparen = Literal("(")
-        rparen = Literal(")")
-
-        # Forward declaration for recursive expressions
-        expression = Forward()
-
-        # String literals
-        string_literal = (
-            (QuotedString('"', esc_char='\\') | QuotedString("'", esc_char='\\'))
-            .set_parse_action(lambda t: ('__STRING_LITERAL__', t[0]))
-        )
-
-        # Numbers
-        number = pyparsing_common.number()
-
-        # Operators
-        from pyparsing import one_of
-        operators = one_of("+ - * / ^ & = <> < > <= >=")
-
-        # Parenthesized expression (for handling nested parens like (num_cols - 1))
-        paren_expr = Forward()
-        paren_expr <<= lparen + Group(expression) + rparen
-
-        # Basic term (simplified - just enough to parse arguments)
-        term = string_literal | paren_expr | number | identifier
-
-        # Expression with operators
-        from pyparsing import ZeroOrMore
-        expression <<= Group(term + ZeroOrMore(operators + term))
-
-        # Function call pattern
-        function_call = Group(
-            identifier("function") +
-            lparen.suppress() +
-            Group(Optional(DelimitedList(expression)))("args") +
-            rparen.suppress()
-        )
-
-        calls = []
-        # Use scanString to find all function calls in the formula
-        for tokens, start, end in function_call.scan_string(formula):
-            # tokens is a ParseResults with a Group, so we need to access the first element
-            if len(tokens) > 0:
-                token_dict = tokens[0].asDict()
-                if "function" in token_dict:
-                    func_name = token_dict["function"]
-                    if func_name in named_functions:
-                        args = list(token_dict["args"]) if "args" in token_dict else []
-                        calls.append({
-                            "name": func_name,
-                            "args": args,
-                            "depth": 0,  # We don't have depth info from scanning
-                            "node": None
-                        })
-
-        return calls
 
     @staticmethod
     def reconstruct_call(func_name: str, args: List) -> str:
