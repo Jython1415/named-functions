@@ -18,9 +18,8 @@ from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 import yaml
-
-from pyparsing import ParseException
 from formula_parser import FormulaParser, strip_comments
+from pyparsing import ParseException
 
 
 class LintRule:
@@ -161,7 +160,7 @@ class ValidFormulaSyntaxRule(LintRule):
     def __init__(self):
         super().__init__(
             name="valid-formula-syntax",
-            description="Formula must be parseable by the pyparsing grammar"
+            description="Formula must be parseable by the pyparsing grammar",
         )
         self.parser = FormulaParser()
 
@@ -180,10 +179,10 @@ class ValidFormulaSyntaxRule(LintRule):
         warnings = []
 
         # Skip if formula field is missing or not a string
-        if 'formula' not in data:
+        if "formula" not in data:
             return errors, warnings
 
-        formula = data['formula']
+        formula = data["formula"]
         if not isinstance(formula, str):
             return errors, warnings
 
@@ -198,13 +197,13 @@ class ValidFormulaSyntaxRule(LintRule):
             error_msg = f"{file_path}: Formula syntax error"
 
             # Add position info if available
-            if hasattr(e, 'loc'):
+            if hasattr(e, "loc"):
                 error_msg += f" at position {e.loc}"
-            if hasattr(e, 'msg'):
+            if hasattr(e, "msg"):
                 error_msg += f": {e.msg}"
 
             # Add line/column context if available
-            if hasattr(e, 'line') and hasattr(e, 'col'):
+            if hasattr(e, "line") and hasattr(e, "col"):
                 error_msg += f"\n  Line: {e.line}\n  Location: {' ' * (e.col - 1)}^"
 
             errors.append(error_msg)
