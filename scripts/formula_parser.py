@@ -17,11 +17,20 @@ The parser supports:
 """
 
 import re
-from typing import Dict, List, Any, Set
+from typing import Any, Dict, List, Set
+
 from pyparsing import (
-    Forward, Word, alphas, alphanums, QuotedString,
-    Literal, Group, DelimitedList, Optional, ParseException,
-    ParseResults, pyparsing_common, MatchFirst, Empty, ZeroOrMore
+    DelimitedList,
+    Forward,
+    Group,
+    Literal,
+    Optional,
+    ParseResults,
+    Word,
+    ZeroOrMore,
+    alphanums,
+    alphas,
+    pyparsing_common,
 )
 
 
@@ -39,9 +48,9 @@ def strip_comments(formula: str) -> str:
         Formula with comments removed
     """
     # Remove /* */ style block comments
-    result = re.sub(r'/\*.*?\*/', '', formula, flags=re.DOTALL)
+    result = re.sub(r"/\*.*?\*/", "", formula, flags=re.DOTALL)
     # Remove // style line comments
-    result = re.sub(r'//[^\n]*', '', result)
+    result = re.sub(r"//[^\n]*", "", result)
     return result
 
 
@@ -54,10 +63,7 @@ class FormulaParser:
         identifier = Word(alphas + "_", alphanums + "_")
         lparen = Literal("(")
         rparen = Literal(")")
-        lbrace = Literal("{")
-        rbrace = Literal("}")
         comma = Literal(",")
-        semicolon = Literal(";")
 
         # String literals (handle escaped quotes)
         # Google Sheets uses doubled-quote escaping: "" within a string represents a single "
@@ -84,7 +90,7 @@ class FormulaParser:
                 content = content.replace('""', '"')
             else:  # single quote
                 content = content.replace("''", "'")
-            return ('__STRING_LITERAL__', content)
+            return ("__STRING_LITERAL__", content)
 
         string_literal = (double_quoted | single_quoted).set_parse_action(process_string_literal)
 
@@ -98,7 +104,8 @@ class FormulaParser:
         # Range reference: A1:B10, A:A, 1:1, etc.
         # Use Regex for flexibility with sheet references and complex patterns
         from pyparsing import Regex
-        range_ref = Regex(r'[A-Za-z$]*[0-9$]*:[A-Za-z$]*[0-9$]*')
+
+        range_ref = Regex(r"[A-Za-z$]*[0-9$]*:[A-Za-z$]*[0-9$]*")
 
         # Forward declaration for recursive expressions
         expression = Forward()
@@ -120,10 +127,10 @@ class FormulaParser:
 
         # Create the function call and apply a parse action to fix spurious empty args
         function_call_raw = Group(
-            identifier("function") +
-            lparen.suppress() +
-            Group(args_list)("args") +
-            rparen.suppress()
+            identifier("function")
+            + lparen.suppress()
+            + Group(args_list)("args")
+            + rparen.suppress()
         )
 
         # Parse action to fix args structure
@@ -131,12 +138,11 @@ class FormulaParser:
             # tokens[0] is a ParseResults for the function_call
             # tokens[0]['args'] contains the args list
             call = tokens[0]
-            if 'args' in call:
-                args = call['args']
+            if "args" in call:
+                args = call["args"]
                 # If args is [[]] or [['__EMPTY__']], convert to []
-                if len(args) == 1:
-                    if args[0] == [] or args[0] == '__EMPTY__':
-                        call['args'] = []
+                if len(args) == 1 and (args[0] == [] or args[0] == "__EMPTY__"):
+                    call["args"] = []
             return tokens
 
         function_call = function_call_raw.copy().set_parse_action(fix_function_call)
@@ -146,7 +152,8 @@ class FormulaParser:
         # Use regex to match content inside braces, requiring at least one non-delimiter element
         # This rejects empty arrays {} and delimiter-only arrays {,} {;} which Google Sheets rejects
         from pyparsing import Regex
-        array_literal = Regex(r'\{[^}]*[^,;\s}][^}]*\}')
+
+        array_literal = Regex(r"\{[^}]*[^,;\s}][^}]*\}")
 
         # Operators (all Google Sheets operators)
         # Arithmetic: +, -, *, /, ^
@@ -156,7 +163,8 @@ class FormulaParser:
         # Note: : is NOT an operator - it's handled by range_ref pattern
         # We define these but don't strictly parse operator precedence
         # We just need them recognized so parsing doesn't stop at them
-        from pyparsing import one_of, CaselessKeyword
+        from pyparsing import CaselessKeyword, one_of
+
         # Use case-insensitive matching for AND and OR since they can appear in various cases
         and_op = CaselessKeyword("AND")
         or_op = CaselessKeyword("OR")
@@ -173,7 +181,16 @@ class FormulaParser:
         # parenthesized_expr must come first (highest precedence)
         # range_ref must come before cell_ref (because A1:B10 contains A1)
         # function_call must come before identifier (because FUNC is also an identifier)
-        term = parenthesized_expr | function_call | string_literal | array_literal | range_ref | number | cell_ref | identifier
+        term = (
+            parenthesized_expr
+            | function_call
+            | string_literal
+            | array_literal
+            | range_ref
+            | number
+            | cell_ref
+            | identifier
+        )
 
         # Allow zero or more unary operators before a term
         # This enables patterns like: -(expr), --(expr), +--(expr), etc.
@@ -191,9 +208,11 @@ class FormulaParser:
         # Mark parenthesized expressions so we know to add parens back during reconstruction
         def mark_parenthesized(tokens):
             """Mark a parenthesized expression so it can be reconstructed with parens."""
-            return [('__PARENTHESIZED__', tokens[0])]
+            return [("__PARENTHESIZED__", tokens[0])]
 
-        parenthesized_expr <<= (lparen.suppress() + expression + rparen.suppress()).set_parse_action(mark_parenthesized)
+        parenthesized_expr <<= (
+            lparen.suppress() + expression + rparen.suppress()
+        ).set_parse_action(mark_parenthesized)
 
         # For parsing the entire formula, we allow multiple expressions
         # This handles cases like: FUNC(x) + FUNC(y)
@@ -213,11 +232,13 @@ class FormulaParser:
             ParseException: If formula cannot be parsed
         """
         # Normalize: strip leading = and whitespace
-        normalized = formula.lstrip('=').strip()
+        normalized = formula.lstrip("=").strip()
         result = self.grammar.parse_string(normalized, parse_all=True)
         return result
 
-    def extract_function_calls(self, ast: ParseResults, named_functions: Set[str]) -> List[Dict[str, Any]]:
+    def extract_function_calls(
+        self, ast: ParseResults, named_functions: Set[str]
+    ) -> List[Dict[str, Any]]:
         """
         Extract function calls by walking the AST.
 
@@ -239,7 +260,9 @@ class FormulaParser:
                     func_name = node_dict["function"]
                     if func_name in named_functions:
                         args = node_dict.get("args", [])
-                        calls.append({"name": func_name, "args": args, "depth": depth, "node": node})
+                        calls.append(
+                            {"name": func_name, "args": args, "depth": depth, "node": node}
+                        )
                     # Walk the args
                     if "args" in node_dict:
                         for arg in node_dict["args"]:
@@ -254,7 +277,9 @@ class FormulaParser:
                     func_name = node["function"]
                     if func_name in named_functions:
                         args = node.get("args", [])
-                        calls.append({"name": func_name, "args": args, "depth": depth, "node": None})
+                        calls.append(
+                            {"name": func_name, "args": args, "depth": depth, "node": None}
+                        )
                     # Walk the args
                     if "args" in node:
                         for arg in node["args"]:
@@ -280,13 +305,14 @@ class FormulaParser:
         Returns:
             Reconstructed function call string
         """
+
         def stringify(arg):
             """Convert argument to string representation."""
             # Handle empty argument placeholder
-            if arg == '__EMPTY__':
+            if arg == "__EMPTY__":
                 return ""
             # Check if it's a marked parenthesized expression
-            elif isinstance(arg, tuple) and len(arg) == 2 and arg[0] == '__PARENTHESIZED__':
+            if isinstance(arg, tuple) and len(arg) == 2 and arg[0] == "__PARENTHESIZED__":
                 # It's a parenthesized expression, stringify the inner expression and wrap
                 inner_expr = arg[1]
                 # Convert ParseResults to list if needed
@@ -295,15 +321,15 @@ class FormulaParser:
                 inner = stringify(inner_expr)
                 return f"({inner})"
             # Check if it's a marked string literal
-            elif isinstance(arg, tuple) and len(arg) == 2 and arg[0] == '__STRING_LITERAL__':
+            if isinstance(arg, tuple) and len(arg) == 2 and arg[0] == "__STRING_LITERAL__":
                 # It's a quoted string literal, add quotes back
                 return f'"{arg[1]}"'
-            elif isinstance(arg, str):
+            if isinstance(arg, str):
                 # It's an identifier or operator, return as-is
                 return arg
-            elif isinstance(arg, (int, float)):
+            if isinstance(arg, (int, float)):
                 return str(arg)
-            elif isinstance(arg, list):
+            if isinstance(arg, list):
                 # Handle list arguments (from grouped expressions)
                 # Recursively stringify each item
                 # The list may contain operators interspersed with terms
@@ -314,20 +340,20 @@ class FormulaParser:
                 result_parts = []
                 i = 0
                 while i < len(stringified_items):
-                    if i < len(stringified_items) - 2 and stringified_items[i] == '(':
+                    if i < len(stringified_items) - 2 and stringified_items[i] == "(":
                         # Find matching )
                         depth = 1
                         j = i + 1
                         while j < len(stringified_items) and depth > 0:
-                            if stringified_items[j] == '(':
+                            if stringified_items[j] == "(":
                                 depth += 1
-                            elif stringified_items[j] == ')':
+                            elif stringified_items[j] == ")":
                                 depth -= 1
                             j += 1
                         # Join the parenthesized section without extra spaces
                         if depth == 0:
                             # Found matching ), join i to j-1 without spaces around parens
-                            inner = " ".join(stringified_items[i+1:j-1])
+                            inner = " ".join(stringified_items[i + 1 : j - 1])
                             result_parts.append(f"({inner})")
                             i = j
                             continue
@@ -336,30 +362,28 @@ class FormulaParser:
 
                 # Join with spaces - operators are already in the list
                 return " ".join(result_parts)
-            elif isinstance(arg, dict):
+            if isinstance(arg, dict):
                 # Handle dict representation from asDict()
-                if 'function' in arg:
-                    inner_func = arg['function']
-                    inner_args = arg.get('args', [])
+                if "function" in arg:
+                    inner_func = arg["function"]
+                    inner_args = arg.get("args", [])
                     return FormulaParser.reconstruct_call(inner_func, inner_args)
                 return str(arg)
-            elif isinstance(arg, ParseResults):
+            if isinstance(arg, ParseResults):
                 # If it's a ParseResults, convert it back to string
-                if hasattr(arg, 'asDict'):
+                if hasattr(arg, "asDict"):
                     node_dict = arg.asDict()
-                    if 'function' in node_dict:
+                    if "function" in node_dict:
                         # It's a function call
-                        inner_func = node_dict['function']
-                        inner_args = node_dict.get('args', [])
+                        inner_func = node_dict["function"]
+                        inner_args = node_dict.get("args", [])
                         return FormulaParser.reconstruct_call(inner_func, inner_args)
                 # Otherwise just convert to string
                 return str(arg)
-            else:
-                return str(arg)
+            return str(arg)
 
         # Join arguments with commas (no spaces for empty arguments)
         stringified_args = [stringify(arg) for arg in args]
-        args_str = ",".join(stringified_args)
         # Add spaces around commas only if arguments are non-empty
         # This handles IF(,,) correctly instead of IF(, , )
         args_str_with_spaces = ""

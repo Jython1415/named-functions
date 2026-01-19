@@ -15,7 +15,8 @@ Exit codes:
 
 import sys
 from pathlib import Path
-from typing import List, Dict, Any, Tuple
+from typing import Any, Dict, List, Tuple
+
 import yaml
 
 from pyparsing import ParseException
@@ -48,24 +49,26 @@ class NoLeadingEqualsRule(LintRule):
 
     def __init__(self):
         super().__init__(
-            name="no-leading-equals",
-            description="Formula field must not start with '=' character"
+            name="no-leading-equals", description="Formula field must not start with '=' character"
         )
 
     def check(self, file_path: Path, data: Dict[str, Any]) -> Tuple[List[str], List[str]]:
         errors = []
         warnings = []
 
-        if 'formula' not in data:
-            return errors, warnings  # Skip if no formula field (will be caught by schema validation)
+        if "formula" not in data:
+            return (
+                errors,
+                warnings,
+            )  # Skip if no formula field (will be caught by schema validation)
 
-        formula = data['formula']
+        formula = data["formula"]
         if not isinstance(formula, str):
             return errors, warnings  # Skip if formula is not a string
 
         # Check if formula starts with '=' (ignoring leading whitespace)
         stripped = formula.lstrip()
-        if stripped.startswith('='):
+        if stripped.startswith("="):
             errors.append(
                 f"{file_path}: Formula starts with '=' character. "
                 f"Remove the leading '=' from the formula field."
@@ -80,23 +83,23 @@ class NoTopLevelLambdaRule(LintRule):
     def __init__(self):
         super().__init__(
             name="no-top-level-lambda",
-            description="Formula field must not start with uninvoked LAMBDA wrapper (Google Sheets adds this automatically)"
+            description="Formula field must not start with uninvoked LAMBDA wrapper (Google Sheets adds this automatically)",
         )
 
     def check(self, file_path: Path, data: Dict[str, Any]) -> Tuple[List[str], List[str]]:
         errors = []
         warnings = []
 
-        if 'formula' not in data:
+        if "formula" not in data:
             return errors, warnings  # Skip if no formula field
 
-        formula = data['formula']
+        formula = data["formula"]
         if not isinstance(formula, str):
             return errors, warnings  # Skip if formula is not a string
 
         # Check if formula starts with LAMBDA (ignoring leading whitespace and trailing whitespace)
         stripped = formula.strip()
-        if stripped.upper().startswith('LAMBDA('):
+        if stripped.upper().startswith("LAMBDA("):
             # Check if it's a self-executing LAMBDA (ends with invocation like )(0) or )(args))
             # Pattern: LAMBDA(...)(...)
 
@@ -111,7 +114,7 @@ class NoTopLevelLambdaRule(LintRule):
                     escape_next = False
                     continue
 
-                if char == '\\':
+                if char == "\\":
                     escape_next = True
                     continue
 
@@ -120,9 +123,9 @@ class NoTopLevelLambdaRule(LintRule):
                     continue
 
                 if not in_string:
-                    if char == '(':
+                    if char == "(":
                         paren_count += 1
-                    elif char == ')':
+                    elif char == ")":
                         paren_count -= 1
                         if paren_count == 0:
                             lambda_end = i
@@ -130,8 +133,8 @@ class NoTopLevelLambdaRule(LintRule):
 
             # Check if there's an immediate invocation after the LAMBDA
             if lambda_end >= 0 and lambda_end < len(stripped) - 1:
-                after_lambda = stripped[lambda_end + 1:].lstrip()
-                if after_lambda.startswith('('):
+                after_lambda = stripped[lambda_end + 1 :].lstrip()
+                if after_lambda.startswith("("):
                     # This is a self-executing LAMBDA - warn about it
                     # Investigation in issue #81 proved that LAMBDA(input, IF(,,))(0) and IF(,,)
                     # behave identically in all contexts. Self-executing LAMBDAs are unnecessary.
@@ -237,7 +240,7 @@ class FormulaLinter:
         warnings = []
 
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, encoding="utf-8") as f:
                 data = yaml.safe_load(f)
 
             if not isinstance(data, dict):
@@ -268,10 +271,10 @@ class FormulaLinter:
             Tuple of (files_checked, error_count, warning_count, errors, warnings)
         """
         if directory is None:
-            directory = Path.cwd() / 'formulas'
+            directory = Path.cwd() / "formulas"
 
         # Find all .yaml files in the formulas directory
-        yaml_files = sorted(directory.glob('*.yaml'))
+        yaml_files = sorted(directory.glob("*.yaml"))
 
         all_errors = []
         all_warnings = []
@@ -317,15 +320,14 @@ def main():
         else:
             print(f"✅ All {files_checked} file(s) passed lint checks!")
         return 0
-    else:
-        print(f"❌ Found {error_count} error(s) in {files_checked} file(s):")
-        print()
-        for error in errors:
-            print(f"  {error}")
-        print()
-        print("Please fix the errors above and run the linter again.")
-        return 1
+    print(f"❌ Found {error_count} error(s) in {files_checked} file(s):")
+    print()
+    for error in errors:
+        print(f"  {error}")
+    print()
+    print("Please fix the errors above and run the linter again.")
+    return 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

@@ -18,11 +18,12 @@ This test verifies that:
 import sys
 from pathlib import Path
 
+
 # Add parent directory to path to import generate_readme
 sys.path.insert(0, str(Path(__file__).parent))
 
-from generate_readme import FormulaParser, expand_formula, ValidationError
 import yaml
+from generate_readme import FormulaParser, ValidationError, expand_formula
 
 
 def test_zero_arg_parsing():
@@ -33,7 +34,7 @@ def test_zero_arg_parsing():
 
     # Test BLANK() can be parsed
     try:
-        ast = parser.parse("BLANK()")
+        parser.parse("BLANK()")
         print("  ✓ BLANK() parsed successfully")
     except Exception as e:
         print(f"  ✗ BLANK() parsing failed: {e}")
@@ -41,7 +42,7 @@ def test_zero_arg_parsing():
 
     # Test nested zero-arg calls
     try:
-        ast = parser.parse("VSTACKFILL(array1, array2, BLANK())")
+        parser.parse("VSTACKFILL(array1, array2, BLANK())")
         print("  ✓ VSTACKFILL(array1, array2, BLANK()) parsed successfully")
     except Exception as e:
         print(f"  ✗ Nested zero-arg call parsing failed: {e}")
@@ -57,25 +58,25 @@ def test_vstackblank_expansion():
     root_dir = Path(__file__).parent.parent
 
     # Load BLANK formula
-    blank_path = root_dir / 'formulas' / 'blank.yaml'
+    blank_path = root_dir / "formulas" / "blank.yaml"
     with open(blank_path) as f:
         blank_data = yaml.safe_load(f)
 
     # Load VSTACKFILL formula
-    vstackfill_path = root_dir / 'formulas' / 'vstackfill.yaml'
+    vstackfill_path = root_dir / "formulas" / "vstackfill.yaml"
     with open(vstackfill_path) as f:
         vstackfill_data = yaml.safe_load(f)
 
     # Load VSTACKBLANK formula
-    vstackblank_path = root_dir / 'formulas' / 'vstackblank.yaml'
+    vstackblank_path = root_dir / "formulas" / "vstackblank.yaml"
     with open(vstackblank_path) as f:
         vstackblank_data = yaml.safe_load(f)
 
     # Create formula dict
     all_formulas = {
-        'BLANK': blank_data,
-        'VSTACKFILL': vstackfill_data,
-        'VSTACKBLANK': vstackblank_data
+        "BLANK": blank_data,
+        "VSTACKFILL": vstackfill_data,
+        "VSTACKBLANK": vstackblank_data,
     }
 
     parser = FormulaParser()
@@ -86,26 +87,26 @@ def test_vstackblank_expansion():
         expanded = expand_formula(vstackblank_data, all_formulas, parser, expanded_cache)
 
         # Verify it was actually expanded (not just the original formula)
-        original = vstackblank_data['formula'].strip()
+        original = vstackblank_data["formula"].strip()
         if expanded.strip() == original:
-            print(f"  ✗ VSTACKBLANK was not expanded")
+            print("  ✗ VSTACKBLANK was not expanded")
             return False
 
         # Verify BLANK() was expanded to IF(,,)
-        if 'IF(,,)' not in expanded:
-            print(f"  ✗ BLANK() was not expanded to IF(,,)")
+        if "IF(,,)" not in expanded:
+            print("  ✗ BLANK() was not expanded to IF(,,)")
             print(f"     Expanded formula: {expanded[:100]}...")
             return False
 
         # Verify VSTACKFILL was expanded (should contain VSTACK)
-        if 'VSTACK' not in expanded:
-            print(f"  ✗ VSTACKFILL was not expanded (missing VSTACK)")
+        if "VSTACK" not in expanded:
+            print("  ✗ VSTACKFILL was not expanded (missing VSTACK)")
             print(f"     Expanded formula: {expanded[:100]}...")
             return False
 
         print("  ✓ VSTACKBLANK expanded successfully")
-        print(f"     Contains IF(,,): ✓")
-        print(f"     Contains VSTACK: ✓")
+        print("     Contains IF(,,): ✓")
+        print("     Contains VSTACK: ✓")
 
     except ValidationError as e:
         print(f"  ✗ VSTACKBLANK expansion failed with validation error: {e}")
@@ -113,6 +114,7 @@ def test_vstackblank_expansion():
     except Exception as e:
         print(f"  ✗ VSTACKBLANK expansion failed: {e}")
         import traceback
+
         traceback.print_exc()
         return False
 
@@ -126,25 +128,25 @@ def test_hstackblank_expansion():
     root_dir = Path(__file__).parent.parent
 
     # Load BLANK formula
-    blank_path = root_dir / 'formulas' / 'blank.yaml'
+    blank_path = root_dir / "formulas" / "blank.yaml"
     with open(blank_path) as f:
         blank_data = yaml.safe_load(f)
 
     # Load HSTACKFILL formula
-    hstackfill_path = root_dir / 'formulas' / 'hstackfill.yaml'
+    hstackfill_path = root_dir / "formulas" / "hstackfill.yaml"
     with open(hstackfill_path) as f:
         hstackfill_data = yaml.safe_load(f)
 
     # Load HSTACKBLANK formula
-    hstackblank_path = root_dir / 'formulas' / 'hstackblank.yaml'
+    hstackblank_path = root_dir / "formulas" / "hstackblank.yaml"
     with open(hstackblank_path) as f:
         hstackblank_data = yaml.safe_load(f)
 
     # Create formula dict
     all_formulas = {
-        'BLANK': blank_data,
-        'HSTACKFILL': hstackfill_data,
-        'HSTACKBLANK': hstackblank_data
+        "BLANK": blank_data,
+        "HSTACKFILL": hstackfill_data,
+        "HSTACKBLANK": hstackblank_data,
     }
 
     parser = FormulaParser()
@@ -155,24 +157,24 @@ def test_hstackblank_expansion():
         expanded = expand_formula(hstackblank_data, all_formulas, parser, expanded_cache)
 
         # Verify it was actually expanded
-        original = hstackblank_data['formula'].strip()
+        original = hstackblank_data["formula"].strip()
         if expanded.strip() == original:
-            print(f"  ✗ HSTACKBLANK was not expanded")
+            print("  ✗ HSTACKBLANK was not expanded")
             return False
 
         # Verify BLANK() was expanded to IF(,,)
-        if 'IF(,,)' not in expanded:
-            print(f"  ✗ BLANK() was not expanded to IF(,,)")
+        if "IF(,,)" not in expanded:
+            print("  ✗ BLANK() was not expanded to IF(,,)")
             return False
 
         # Verify HSTACKFILL was expanded (should contain HSTACK)
-        if 'HSTACK' not in expanded:
-            print(f"  ✗ HSTACKFILL was not expanded (missing HSTACK)")
+        if "HSTACK" not in expanded:
+            print("  ✗ HSTACKFILL was not expanded (missing HSTACK)")
             return False
 
         print("  ✓ HSTACKBLANK expanded successfully")
-        print(f"     Contains IF(,,): ✓")
-        print(f"     Contains HSTACK: ✓")
+        print("     Contains IF(,,): ✓")
+        print("     Contains HSTACK: ✓")
 
     except ValidationError as e:
         print(f"  ✗ HSTACKBLANK expansion failed with validation error: {e}")
@@ -215,5 +217,5 @@ def main():
     return 0 if passed == total else 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

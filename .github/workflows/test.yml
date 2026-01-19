@@ -28,6 +28,15 @@ jobs:
       - name: Install dependencies
         run: uv sync --dev
 
+      - name: Lint Python code with Ruff
+        run: uv run ruff check .
+
+      - name: Check Python formatting with Ruff
+        run: uv run ruff format --check .
+
+      - name: Lint YAML files
+        run: uv run yamllint .
+
       - name: Run unit tests
         run: uv run pytest tests/ -v --cov=scripts --cov-report=term-missing
 

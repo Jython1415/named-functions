@@ -1,0 +1,38 @@
+---
+# yamllint configuration for named-functions project
+# Validates both formula YAMLs and GitHub workflow YAMLs
+
+extends: default
+
+rules:
+  # Line length - allow long lines for formulas
+  line-length:
+    max: 120
+    level: warning
+
+  # Indentation - 2 spaces (GitHub Actions standard)
+  indentation:
+    spaces: 2
+    indent-sequences: true
+
+  # Allow inline mappings (common in GitHub Actions)
+  braces:
+    min-spaces-inside: 0
+    max-spaces-inside: 1
+
+  # Document start (---) not required
+  document-start: disable
+
+  # Allow truthy values (yes/no, on/off) in GitHub Actions
+  truthy:
+    allowed-values: ['true', 'false', 'yes', 'no', 'on', 'off']
+    check-keys: false
+
+  # Comments - allow reasonable comment formatting
+  comments:
+    min-spaces-from-content: 1
+
+  # Allow empty values (common in formulas)
+  empty-values:
+    forbid-in-block-mappings: false
+    forbid-in-flow-mappings: false

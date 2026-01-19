@@ -13,6 +13,8 @@ dependencies = [
 dev = [
     "pytest>=7.0",
     "pytest-cov>=4.0",
+    "ruff>=0.8.0",
+    "yamllint>=1.35.0",
 ]
 
 [build-system]
@@ -39,3 +41,60 @@ markers = [
     "integration: Integration tests for complete workflows",
     "slow: Tests that take significant time to run",
 ]
+
+[tool.ruff]
+# Line length to match common Python standards
+line-length = 100
+
+# Target Python 3.8+ (matching project requirements)
+target-version = "py38"
+
+# Exclude common directories
+exclude = [
+    ".git",
+    ".pytest_cache",
+    "__pycache__",
+    "*.egg-info",
+]
+
+[tool.ruff.lint]
+# Enable recommended rulesets
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort (import sorting)
+    "N",      # pep8-naming
+    "UP",     # pyupgrade (modern Python syntax)
+    "B",      # flake8-bugbear (common bugs)
+    "C4",     # flake8-comprehensions
+    "SIM",    # flake8-simplify
+    "RET",    # flake8-return
+]
+
+# Disable specific rules that conflict with project style
+ignore = [
+    "E501",   # Line too long (handled by formatter)
+    "RET504", # Unnecessary variable assignment before return (sometimes clearer)
+    "SIM108", # Use ternary operator (sometimes if/else is clearer)
+]
+
+# Allow auto-fixing for safe rules
+fixable = ["ALL"]
+unfixable = []
+
+[tool.ruff.lint.isort]
+# Import sorting configuration
+known-first-party = ["scripts"]
+force-single-line = false
+lines-after-imports = 2
+
+[tool.ruff.format]
+# Use double quotes for strings
+quote-style = "double"
+
+# Indent with spaces
+indent-style = "space"
+
+# Unix-style line endings
+line-ending = "lf"

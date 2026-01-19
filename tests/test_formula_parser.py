@@ -19,11 +19,12 @@ Based on issue #96 analysis, we test 7 categories:
 import sys
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent / 'scripts'))
+
+sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
 import pytest
-from pyparsing import ParseException
 from formula_parser import FormulaParser
+from pyparsing import ParseException
 
 
 class TestBasicParsing:
@@ -163,7 +164,7 @@ class TestLETAndLAMBDA:
 
     def test_complex_let_lambda_combination(self):
         """Test complex LET statement with LAMBDA containing function calls."""
-        formula = 'LET(helper, LAMBDA(x, FUNC1(x)), result, BYROW(data, helper), FUNC2(result))'
+        formula = "LET(helper, LAMBDA(x, FUNC1(x)), result, BYROW(data, helper), FUNC2(result))"
         named_functions = {"FUNC1", "FUNC2"}
 
         ast = self.parser.parse(formula)
@@ -223,7 +224,7 @@ class TestStringHandling:
 
     def test_string_with_embedded_single_quotes(self):
         """Test string containing opposite quote type."""
-        formula = '''FUNC("value with 'single' quotes")'''
+        formula = """FUNC("value with 'single' quotes")"""
         named_functions = {"FUNC"}
 
         ast = self.parser.parse(formula)
@@ -239,7 +240,7 @@ class TestStringHandling:
         Google Sheets uses doubled quotes for escaping: ""Hello"" not \"Hello\"
         """
         # Input: FUNC("Say ""Hello""")
-        formula = 'FUNC("Say ' + '""' + 'Hello' + '""' + '"' + ')'
+        formula = 'FUNC("Say ' + '""' + "Hello" + '""' + '"' + ")"
         named_functions = {"FUNC"}
 
         ast = self.parser.parse(formula)
@@ -254,7 +255,18 @@ class TestStringHandling:
         Example: She said "Hello" and "Goodbye" (with doubled quotes in Google Sheets)
         """
         # Input has doubled quotes for escaping
-        formula = 'FUNC("She said ' + '""' + 'Hello' + '""' + ' and ' + '""' + 'Goodbye' + '""' + '"' + ')'
+        formula = (
+            'FUNC("She said '
+            + '""'
+            + "Hello"
+            + '""'
+            + " and "
+            + '""'
+            + "Goodbye"
+            + '""'
+            + '"'
+            + ")"
+        )
         named_functions = {"FUNC"}
 
         ast = self.parser.parse(formula)
@@ -267,7 +279,7 @@ class TestStringHandling:
     def test_string_starting_with_escaped_quote(self):
         """Test string that starts with an escaped quote."""
         # Input: string starts with escaped quote (3 quotes at start)
-        formula = 'FUNC(' + '""' + '"Start with quote"' + ')'
+        formula = "FUNC(" + '""' + '"Start with quote"' + ")"
         named_functions = {"FUNC"}
 
         ast = self.parser.parse(formula)
@@ -279,7 +291,7 @@ class TestStringHandling:
     def test_string_ending_with_escaped_quote(self):
         """Test string that ends with an escaped quote."""
         # Input: string ends with escaped quote (3 quotes at end)
-        formula = 'FUNC("End with quote' + '""' + '"' + ')'
+        formula = 'FUNC("End with quote' + '""' + '"' + ")"
         named_functions = {"FUNC"}
 
         ast = self.parser.parse(formula)
@@ -291,7 +303,7 @@ class TestStringHandling:
     def test_string_with_only_escaped_quotes(self):
         """Test string containing only escaped quotes."""
         # Input: string with two doubled quotes (4 quotes total)
-        formula = 'FUNC(' + '""' + '""' + ')'
+        formula = "FUNC(" + '""' + '""' + ")"
         named_functions = {"FUNC"}
 
         ast = self.parser.parse(formula)
@@ -303,7 +315,9 @@ class TestStringHandling:
     def test_multiple_args_with_escaped_quotes(self):
         """Test function with multiple arguments containing escaped quotes."""
         # Input: two arguments each with doubled quotes
-        formula = 'FUNC("First ' + '""' + 'arg' + '""' + '", "Second ' + '""' + 'value' + '""' + '"' + ')'
+        formula = (
+            'FUNC("First ' + '""' + "arg" + '""' + '", "Second ' + '""' + "value" + '""' + '"' + ")"
+        )
         named_functions = {"FUNC"}
 
         ast = self.parser.parse(formula)
@@ -316,7 +330,7 @@ class TestStringHandling:
     def test_nested_function_with_escaped_quotes(self):
         """Test nested function calls with escaped quotes in arguments."""
         # Input: nested function with doubled quotes in inner arg
-        formula = 'OUTER(INNER("Value with ' + '""' + 'quotes' + '""' + '"' + ')' + ')'
+        formula = 'OUTER(INNER("Value with ' + '""' + "quotes" + '""' + '"' + ")" + ")"
         named_functions = {"OUTER", "INNER"}
 
         ast = self.parser.parse(formula)
@@ -814,7 +828,7 @@ class TestReconstructCallCoverage:
         """Test reconstruct_call() with parenthesized expressions in list (covers lines 319-333)."""
         # Create a complex expression with nested parentheses
         # This triggers the parenthesis matching code
-        formula = 'FUNC((a + b) * c)'
+        formula = "FUNC((a + b) * c)"
         ast = self.parser.parse(formula)
         calls = self.parser.extract_function_calls(ast, {"FUNC"})
 
@@ -824,7 +838,7 @@ class TestReconstructCallCoverage:
 
     def test_reconstruct_call_deeply_nested_parentheses(self):
         """Test reconstruct_call() with deeply nested parenthesized expressions."""
-        formula = 'FUNC(((a + b) * (c - d)) / e)'
+        formula = "FUNC(((a + b) * (c - d)) / e)"
         ast = self.parser.parse(formula)
         calls = self.parser.extract_function_calls(ast, {"FUNC"})
 
@@ -835,30 +849,21 @@ class TestReconstructCallCoverage:
     def test_reconstruct_call_with_dict_argument(self):
         """Test reconstruct_call() handling dict arguments (covers lines 339-345)."""
         # Create a dict representation of a function call
-        func_dict = {
-            'function': 'INNER',
-            'args': ['x', 'y']
-        }
+        func_dict = {"function": "INNER", "args": ["x", "y"]}
         result = FormulaParser.reconstruct_call("OUTER", [func_dict])
         assert result == "OUTER(INNER(x, y))"
 
     def test_reconstruct_call_with_nested_dict_arguments(self):
         """Test reconstruct_call() with nested dict representations."""
-        inner_dict = {
-            'function': 'INNER',
-            'args': ['a']
-        }
-        middle_dict = {
-            'function': 'MIDDLE',
-            'args': [inner_dict]
-        }
+        inner_dict = {"function": "INNER", "args": ["a"]}
+        middle_dict = {"function": "MIDDLE", "args": [inner_dict]}
         result = FormulaParser.reconstruct_call("OUTER", [middle_dict])
         assert result == "OUTER(MIDDLE(INNER(a)))"
 
     def test_reconstruct_call_with_parseresults_argument(self):
         """Test reconstruct_call() handling ParseResults arguments (covers lines 346-356)."""
         # Parse a formula to get ParseResults
-        formula = 'OUTER(INNER(x, y))'
+        formula = "OUTER(INNER(x, y))"
         ast = self.parser.parse(formula)
         calls = self.parser.extract_function_calls(ast, {"OUTER"})
 
@@ -869,13 +874,7 @@ class TestReconstructCallCoverage:
 
     def test_reconstruct_call_mixed_types_in_arguments(self):
         """Test reconstruct_call() with mixed argument types (strings, ints, tuples, lists)."""
-        args = [
-            "identifier",
-            42,
-            ("__STRING_LITERAL__", "text"),
-            ["a", "+", "b"],
-            "__EMPTY__"
-        ]
+        args = ["identifier", 42, ("__STRING_LITERAL__", "text"), ["a", "+", "b"], "__EMPTY__"]
         result = FormulaParser.reconstruct_call("FUNC", args)
         # Should handle all types gracefully
         assert "FUNC(" in result
@@ -933,6 +932,7 @@ class TestReconstructCallCoverage:
         """Test reconstruct_call() with ParseResults without function key (covers line 356)."""
         # Parse a simple value that creates ParseResults without 'function' key
         from pyparsing import ParseResults
+
         # Create a ParseResults that is not a function call
         pr = ParseResults(["x"])
         result = FormulaParser.reconstruct_call("FUNC", [pr])
@@ -970,7 +970,7 @@ class TestReconstructCallCoverage:
             ("__PARENTHESIZED__", ["a", "+", "b"]),
             {"key": "value"},
             ["(", "expr", ")"],
-            "__EMPTY__"
+            "__EMPTY__",
         ]
         result = FormulaParser.reconstruct_call("COMPLEX", args)
         assert "COMPLEX(" in result
@@ -1319,5 +1319,5 @@ class TestGrammarRuleCoverage:
             self.parser.parse("/A1")
 
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v'])
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

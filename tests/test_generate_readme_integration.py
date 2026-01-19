@@ -8,10 +8,9 @@ internal implementation details.
 
 import sys
 from pathlib import Path
-import tempfile
-import yaml
 
-sys.path.insert(0, str(Path(__file__).parent.parent / 'scripts'))
+
+sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
 import pytest
 
@@ -51,49 +50,42 @@ class TestReadmeGeneration:
 
         result = strip_comments(formula_with_comments)
 
-        assert '/*' not in result
-        assert '*/' not in result
-        assert '//' not in result
-        assert 'LET(' in result
-        assert 'x, 5' in result
+        assert "/*" not in result
+        assert "*/" not in result
+        assert "//" not in result
+        assert "LET(" in result
+        assert "x, 5" in result
 
     def test_dependency_graph_construction(self):
         """Test building dependency graph from formulas."""
-        from generate_readme import build_dependency_graph
         from formula_parser import FormulaParser
+        from generate_readme import build_dependency_graph
 
         formulas = [
-            {'name': 'A', 'formula': 'B(x)'},
-            {'name': 'B', 'formula': 'x + 1'},
-            {'name': 'C', 'formula': 'A(y)'}
+            {"name": "A", "formula": "B(x)"},
+            {"name": "B", "formula": "x + 1"},
+            {"name": "C", "formula": "A(y)"},
         ]
 
         parser = FormulaParser()
         graph = build_dependency_graph(formulas, parser)
 
-        assert 'A' in graph
-        assert 'B' in graph
-        assert 'C' in graph
+        assert "A" in graph
+        assert "B" in graph
+        assert "C" in graph
 
     def test_cycle_detection_finds_cycles(self):
         """Test that cycle detection works."""
         from generate_readme import detect_cycles
 
         # Graph with cycle: A -> B -> A
-        graph_with_cycle = {
-            'A': ['B'],
-            'B': ['A']
-        }
+        graph_with_cycle = {"A": ["B"], "B": ["A"]}
 
         cycles = detect_cycles(graph_with_cycle)
         assert len(cycles) > 0
 
         # Graph without cycle
-        graph_without_cycle = {
-            'A': ['B'],
-            'B': ['C'],
-            'C': []
-        }
+        graph_without_cycle = {"A": ["B"], "B": ["C"], "C": []}
 
         cycles = detect_cycles(graph_without_cycle)
         assert len(cycles) == 0
@@ -107,63 +99,61 @@ class TestFormulaValidation:
         from generate_readme import validate_formula_yaml
 
         valid_data = {
-            'name': 'TEST',
-            'version': '1.0.0',
-            'description': 'A test formula',
-            'parameters': [
-                {'name': 'x', 'description': 'Input value'}
-            ],
-            'formula': 'x + 1'
+            "name": "TEST",
+            "version": "1.0.0",
+            "description": "A test formula",
+            "parameters": [{"name": "x", "description": "Input value"}],
+            "formula": "x + 1",
         }
 
         # Should not raise
         try:
-            validate_formula_yaml(valid_data, 'test.yaml')
+            validate_formula_yaml(valid_data, "test.yaml")
         except Exception as e:
             pytest.fail(f"Valid formula failed validation: {e}")
 
     def test_missing_name_fails_validation(self):
         """Test that missing name field fails validation."""
-        from generate_readme import validate_formula_yaml, ValidationError
+        from generate_readme import ValidationError, validate_formula_yaml
 
         invalid_data = {
-            'version': '1.0.0',
-            'description': 'Missing name',
-            'parameters': [],
-            'formula': 'x'
+            "version": "1.0.0",
+            "description": "Missing name",
+            "parameters": [],
+            "formula": "x",
         }
 
         with pytest.raises(ValidationError, match="name"):
-            validate_formula_yaml(invalid_data, 'test.yaml')
+            validate_formula_yaml(invalid_data, "test.yaml")
 
     def test_missing_formula_fails_validation(self):
         """Test that missing formula field fails validation."""
-        from generate_readme import validate_formula_yaml, ValidationError
+        from generate_readme import ValidationError, validate_formula_yaml
 
         invalid_data = {
-            'name': 'TEST',
-            'version': '1.0.0',
-            'description': 'Missing formula',
-            'parameters': []
+            "name": "TEST",
+            "version": "1.0.0",
+            "description": "Missing formula",
+            "parameters": [],
         }
 
         with pytest.raises(ValidationError, match="formula"):
-            validate_formula_yaml(invalid_data, 'test.yaml')
+            validate_formula_yaml(invalid_data, "test.yaml")
 
     def test_empty_description_fails_validation(self):
         """Test that empty description fails validation."""
-        from generate_readme import validate_formula_yaml, ValidationError
+        from generate_readme import ValidationError, validate_formula_yaml
 
         invalid_data = {
-            'name': 'TEST',
-            'version': '1.0.0',
-            'description': '',  # Empty
-            'parameters': [],
-            'formula': 'x'
+            "name": "TEST",
+            "version": "1.0.0",
+            "description": "",  # Empty
+            "parameters": [],
+            "formula": "x",
         }
 
         with pytest.raises(ValidationError, match="description"):
-            validate_formula_yaml(invalid_data, 'test.yaml')
+            validate_formula_yaml(invalid_data, "test.yaml")
 
 
 class TestExistingFormulas:
@@ -174,12 +164,12 @@ class TestExistingFormulas:
         import generate_readme
 
         root_dir = Path(__file__).parent.parent
-        formulas_dir = root_dir / 'formulas'
+        formulas_dir = root_dir / "formulas"
 
         if not formulas_dir.exists():
             pytest.skip("Formulas directory not found")
 
-        yaml_files = list(formulas_dir.glob('*.yaml'))
+        yaml_files = list(formulas_dir.glob("*.yaml"))
         assert len(yaml_files) > 0, "No YAML files found"
 
         # Load and validate all formulas
@@ -207,5 +197,5 @@ class TestExistingFormulas:
             raise
 
 
-if __name__ == '__main__':
-    pytest.main([__file__, '-v'])
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])

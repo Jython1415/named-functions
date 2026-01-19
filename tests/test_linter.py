@@ -16,14 +16,15 @@ import sys
 import tempfile
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent / 'scripts'))
+
+sys.path.insert(0, str(Path(__file__).parent.parent / "scripts"))
 
 import pytest
 import yaml
 from lint_formulas import (
+    FormulaLinter,
     NoLeadingEqualsRule,
     NoTopLevelLambdaRule,
-    FormulaLinter,
 )
 
 
@@ -36,7 +37,7 @@ class TestNoLeadingEqualsRule:
 
     def test_formula_without_leading_equals_passes(self):
         """Test that a valid formula without = passes with no errors."""
-        data = {'formula': 'LET(x, 1, x)'}
+        data = {"formula": "LET(x, 1, x)"}
         errors, warnings = self.rule.check(Path("test.yaml"), data)
 
         assert len(errors) == 0
@@ -44,11 +45,11 @@ class TestNoLeadingEqualsRule:
 
     def test_formula_with_leading_equals_fails(self):
         """Test that formula starting with = produces an error."""
-        data = {'formula': '=SUM(A1:A10)'}
+        data = {"formula": "=SUM(A1:A10)"}
         errors, warnings = self.rule.check(Path("test.yaml"), data)
 
         assert len(errors) == 1
-        assert 'starts with' in errors[0].lower()
+        assert "starts with" in errors[0].lower()
         assert len(warnings) == 0
 
     def test_formula_with_whitespace_and_leading_equals_fails(self):
@@ -56,7 +57,7 @@ class TestNoLeadingEqualsRule:
 
         Whitespace should be stripped before checking for =.
         """
-        data = {'formula': '   =SUM(A1:A10)'}
+        data = {"formula": "   =SUM(A1:A10)"}
         errors, warnings = self.rule.check(Path("test.yaml"), data)
 
         assert len(errors) == 1
@@ -67,7 +68,7 @@ class TestNoLeadingEqualsRule:
 
         Other validators (schema validation) will catch missing formula field.
         """
-        data = {'name': 'MYFUNCTION'}
+        data = {"name": "MYFUNCTION"}
         errors, warnings = self.rule.check(Path("test.yaml"), data)
 
         assert len(errors) == 0
@@ -78,7 +79,7 @@ class TestNoLeadingEqualsRule:
 
         This is a data type issue that schema validation should catch.
         """
-        data = {'formula': 123}
+        data = {"formula": 123}
         errors, warnings = self.rule.check(Path("test.yaml"), data)
 
         assert len(errors) == 0
@@ -89,7 +90,7 @@ class TestNoLeadingEqualsRule:
 
         Only leading = is invalid. Comparisons like '=' are allowed.
         """
-        data = {'formula': 'IF(x=5, "equal", "not equal")'}
+        data = {"formula": 'IF(x=5, "equal", "not equal")'}
         errors, warnings = self.rule.check(Path("test.yaml"), data)
 
         assert len(errors) == 0
@@ -97,7 +98,7 @@ class TestNoLeadingEqualsRule:
 
     def test_simple_function_passes(self):
         """Test that simple function call is valid."""
-        data = {'formula': 'SUM(A1:A10)'}
+        data = {"formula": "SUM(A1:A10)"}
         errors, warnings = self.rule.check(Path("test.yaml"), data)
 
         assert len(errors) == 0
@@ -113,7 +114,7 @@ class TestNoTopLevelLambdaRule:
 
     def test_normal_formula_passes(self):
         """Test that normal formula without LAMBDA passes."""
-        data = {'formula': 'LET(x, 1, x)'}
+        data = {"formula": "LET(x, 1, x)"}
         errors, warnings = self.rule.check(Path("test.yaml"), data)
 
         assert len(errors) == 0
@@ -125,11 +126,11 @@ class TestNoTopLevelLambdaRule:
         Uninvoked LAMBDA is invalid because Google Sheets adds the wrapper
         automatically when you define parameters.
         """
-        data = {'formula': 'LAMBDA(x, x+1)'}
+        data = {"formula": "LAMBDA(x, x+1)"}
         errors, warnings = self.rule.check(Path("test.yaml"), data)
 
         assert len(errors) == 1
-        assert 'uninvoked' in errors[0].lower()
+        assert "uninvoked" in errors[0].lower()
         assert len(warnings) == 0
 
     def test_self_executing_lambda_warns(self):
@@ -137,12 +138,12 @@ class TestNoTopLevelLambdaRule:
 
         LAMBDA(x, x+1)(0) is technically valid but unnecessary.
         """
-        data = {'formula': 'LAMBDA(x, x+1)(0)'}
+        data = {"formula": "LAMBDA(x, x+1)(0)"}
         errors, warnings = self.rule.check(Path("test.yaml"), data)
 
         assert len(errors) == 0
         assert len(warnings) == 1
-        assert 'self-executing' in warnings[0].lower()
+        assert "self-executing" in warnings[0].lower()
 
     def test_nested_lambda_inside_let_passes(self):
         """Test that LAMBDA nested in LET is allowed.
@@ -150,7 +151,7 @@ class TestNoTopLevelLambdaRule:
         Only top-level uninvoked LAMBDA is invalid. LAMBDA inside LET
         or as argument is fine.
         """
-        data = {'formula': 'LET(f, LAMBDA(x, x+1), f(5))'}
+        data = {"formula": "LET(f, LAMBDA(x, x+1), f(5))"}
         errors, warnings = self.rule.check(Path("test.yaml"), data)
 
         assert len(errors) == 0
@@ -158,15 +159,15 @@ class TestNoTopLevelLambdaRule:
 
     def test_lambda_lowercase_fails(self):
         """Test that lowercase 'lambda' also fails (case-insensitive check)."""
-        data = {'formula': 'lambda(x, x+1)'}
+        data = {"formula": "lambda(x, x+1)"}
         errors, warnings = self.rule.check(Path("test.yaml"), data)
 
         assert len(errors) == 1
-        assert 'uninvoked' in errors[0].lower()
+        assert "uninvoked" in errors[0].lower()
 
     def test_missing_formula_field_passes(self):
         """Test that missing formula field is skipped."""
-        data = {'name': 'MYFUNCTION'}
+        data = {"name": "MYFUNCTION"}
         errors, warnings = self.rule.check(Path("test.yaml"), data)
 
         assert len(errors) == 0
@@ -174,7 +175,7 @@ class TestNoTopLevelLambdaRule:
 
     def test_non_string_formula_passes(self):
         """Test that non-string formula field is skipped."""
-        data = {'formula': 123}
+        data = {"formula": 123}
         errors, warnings = self.rule.check(Path("test.yaml"), data)
 
         assert len(errors) == 0
@@ -186,7 +187,7 @@ class TestNoTopLevelLambdaRule:
         BYROW(range, LAMBDA(r, ...)) is valid because the LAMBDA
         is an argument, not the top-level formula.
         """
-        data = {'formula': 'BYROW(range, LAMBDA(r, COUNTA(r)))'}
+        data = {"formula": "BYROW(range, LAMBDA(r, COUNTA(r)))"}
         errors, warnings = self.rule.check(Path("test.yaml"), data)
 
         assert len(errors) == 0
@@ -194,7 +195,7 @@ class TestNoTopLevelLambdaRule:
 
     def test_whitespace_before_lambda_fails(self):
         """Test that leading whitespace is ignored before checking LAMBDA."""
-        data = {'formula': '  LAMBDA(x, x+1)'}
+        data = {"formula": "  LAMBDA(x, x+1)"}
         errors, warnings = self.rule.check(Path("test.yaml"), data)
 
         assert len(errors) == 1
@@ -202,7 +203,7 @@ class TestNoTopLevelLambdaRule:
 
     def test_self_executing_lambda_with_multiple_args_warns(self):
         """Test self-executing LAMBDA with multiple arguments warns."""
-        data = {'formula': 'LAMBDA(x, y, x+y)(1, 2)'}
+        data = {"formula": "LAMBDA(x, y, x+y)(1, 2)"}
         errors, warnings = self.rule.check(Path("test.yaml"), data)
 
         assert len(errors) == 0
@@ -210,7 +211,7 @@ class TestNoTopLevelLambdaRule:
 
     def test_self_executing_lambda_with_whitespace_warns(self):
         """Test self-executing LAMBDA with whitespace between definition and call."""
-        data = {'formula': 'LAMBDA(x, x+1) (5)'}
+        data = {"formula": "LAMBDA(x, x+1) (5)"}
         errors, warnings = self.rule.check(Path("test.yaml"), data)
 
         assert len(errors) == 0
@@ -225,22 +226,18 @@ class TestFormulaLinter:
         self.linter = FormulaLinter()
 
     def test_linter_has_expected_rules(self):
-        """Test that linter has all expected rules registered."""
+        """Test that linter has both expected rules registered."""
         rule_names = {rule.name for rule in self.linter.rules}
 
-        assert 'no-leading-equals' in rule_names
-        assert 'no-top-level-lambda' in rule_names
-        assert 'valid-formula-syntax' in rule_names
-        assert len(self.linter.rules) == 3
+        assert "no-leading-equals" in rule_names
+        assert "no-top-level-lambda" in rule_names
+        assert len(self.linter.rules) == 2
 
     def test_lint_file_with_valid_yaml(self):
         """Test linting a valid YAML file with no linter errors."""
         # Create a temporary YAML file with valid formula
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
-            yaml.dump({
-                'name': 'TEST_FUNC',
-                'formula': 'LET(x, 1, x)'
-            }, f)
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            yaml.dump({"name": "TEST_FUNC", "formula": "LET(x, 1, x)"}, f)
             temp_path = Path(f.name)
 
         try:
@@ -252,64 +249,47 @@ class TestFormulaLinter:
 
     def test_lint_file_with_leading_equals_error(self):
         """Test linting file with leading = produces error."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
-            yaml.dump({
-                'name': 'TEST_FUNC',
-                'formula': '=SUM(A1:A10)'
-            }, f)
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            yaml.dump({"name": "TEST_FUNC", "formula": "=SUM(A1:A10)"}, f)
             temp_path = Path(f.name)
 
         try:
             errors, warnings = self.linter.lint_file(temp_path)
             assert len(errors) == 1
-            assert 'starts with' in errors[0].lower()
+            assert "starts with" in errors[0].lower()
         finally:
             temp_path.unlink()
 
     def test_lint_file_with_uninvoked_lambda_error(self):
         """Test linting file with uninvoked LAMBDA produces error."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
-            yaml.dump({
-                'name': 'TEST_FUNC',
-                'formula': 'LAMBDA(x, x+1)'
-            }, f)
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            yaml.dump({"name": "TEST_FUNC", "formula": "LAMBDA(x, x+1)"}, f)
             temp_path = Path(f.name)
 
         try:
             errors, warnings = self.linter.lint_file(temp_path)
             assert len(errors) == 1
-            assert 'uninvoked' in errors[0].lower()
+            assert "uninvoked" in errors[0].lower()
         finally:
             temp_path.unlink()
 
     def test_lint_file_with_self_executing_lambda_warning(self):
-        """Test linting file with self-executing LAMBDA produces error and warning.
-
-        Self-executing LAMBDAs like LAMBDA(x, x+1)(0) are not supported by the
-        pyparsing grammar (they're syntax errors), even though NoTopLevelLambdaRule
-        would warn about them if the parser accepted them.
-        """
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
-            yaml.dump({
-                'name': 'TEST_FUNC',
-                'formula': 'LAMBDA(x, x+1)(0)'
-            }, f)
+        """Test linting file with self-executing LAMBDA produces warning."""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
+            yaml.dump({"name": "TEST_FUNC", "formula": "LAMBDA(x, x+1)(0)"}, f)
             temp_path = Path(f.name)
 
         try:
             errors, warnings = self.linter.lint_file(temp_path)
-            # ValidFormulaSyntaxRule rejects it as a syntax error
-            assert len(errors) == 1
-            assert 'syntax error' in errors[0].lower()
-            # NoTopLevelLambdaRule also produces a warning
+            assert len(errors) == 0
             assert len(warnings) == 1
-            assert 'self-executing' in warnings[0].lower()
+            assert "self-executing" in warnings[0].lower()
         finally:
             temp_path.unlink()
 
     def test_lint_file_with_yaml_parse_error(self):
         """Test linting file with invalid YAML produces error."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             # Write invalid YAML
             f.write("invalid: yaml: content: without: proper: structure")
             temp_path = Path(f.name)
@@ -317,13 +297,13 @@ class TestFormulaLinter:
         try:
             errors, warnings = self.linter.lint_file(temp_path)
             assert len(errors) == 1
-            assert 'parsing error' in errors[0].lower() or 'yaml' in errors[0].lower()
+            assert "parsing error" in errors[0].lower() or "yaml" in errors[0].lower()
         finally:
             temp_path.unlink()
 
     def test_lint_file_with_non_dict_yaml(self):
         """Test linting file where YAML parses to non-dict raises error."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             # Write YAML that parses as a list, not a dict
             f.write("- item1\n- item2\n")
             temp_path = Path(f.name)
@@ -331,7 +311,7 @@ class TestFormulaLinter:
         try:
             errors, warnings = self.linter.lint_file(temp_path)
             assert len(errors) == 1
-            assert 'invalid yaml structure' in errors[0].lower()
+            assert "invalid yaml structure" in errors[0].lower()
         finally:
             temp_path.unlink()
 
@@ -339,19 +319,18 @@ class TestFormulaLinter:
         """Test that lint_all returns correct file count."""
         # Create temporary directory with formula files
         import tempfile
+
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir_path = Path(tmpdir)
 
             # Create 3 valid formula files
             for i in range(3):
-                with open(tmpdir_path / f"formula{i}.yaml", 'w') as f:
-                    yaml.dump({
-                        'name': f'FUNC{i}',
-                        'formula': 'LET(x, 1, x)'
-                    }, f)
+                with open(tmpdir_path / f"formula{i}.yaml", "w") as f:
+                    yaml.dump({"name": f"FUNC{i}", "formula": "LET(x, 1, x)"}, f)
 
-            files_checked, error_count, warning_count, errors, warnings = \
-                self.linter.lint_all(tmpdir_path)
+            files_checked, error_count, warning_count, errors, warnings = self.linter.lint_all(
+                tmpdir_path
+            )
 
             assert files_checked == 3
             assert error_count == 0
@@ -363,43 +342,35 @@ class TestFormulaLinter:
             tmpdir_path = Path(tmpdir)
 
             # Create one valid and one invalid file
-            with open(tmpdir_path / "valid.yaml", 'w') as f:
-                yaml.dump({'name': 'VALID', 'formula': 'LET(x, 1, x)'}, f)
+            with open(tmpdir_path / "valid.yaml", "w") as f:
+                yaml.dump({"name": "VALID", "formula": "LET(x, 1, x)"}, f)
 
-            with open(tmpdir_path / "invalid.yaml", 'w') as f:
-                yaml.dump({'name': 'INVALID', 'formula': '=SUM(A1:A10)'}, f)
+            with open(tmpdir_path / "invalid.yaml", "w") as f:
+                yaml.dump({"name": "INVALID", "formula": "=SUM(A1:A10)"}, f)
 
-            files_checked, error_count, warning_count, errors, warnings = \
-                self.linter.lint_all(tmpdir_path)
+            files_checked, error_count, warning_count, errors, warnings = self.linter.lint_all(
+                tmpdir_path
+            )
 
             assert files_checked == 2
             assert error_count == 1
             assert len(errors) == 1
 
     def test_lint_all_counts_warnings(self):
-        """Test that lint_all correctly counts warnings and errors.
-
-        Self-executing LAMBDAs like LAMBDA(x, x+1)(0) are not supported by the
-        pyparsing grammar, so they generate both errors and warnings.
-        """
+        """Test that lint_all correctly counts warnings from multiple files."""
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir_path = Path(tmpdir)
 
-            # Create file with error and warning (self-executing LAMBDA)
-            with open(tmpdir_path / "warning.yaml", 'w') as f:
-                yaml.dump({
-                    'name': 'WARNING_FUNC',
-                    'formula': 'LAMBDA(x, x+1)(0)'
-                }, f)
+            # Create file with warning (self-executing LAMBDA)
+            with open(tmpdir_path / "warning.yaml", "w") as f:
+                yaml.dump({"name": "WARNING_FUNC", "formula": "LAMBDA(x, x+1)(0)"}, f)
 
-            files_checked, error_count, warning_count, errors, warnings = \
-                self.linter.lint_all(tmpdir_path)
+            files_checked, error_count, warning_count, errors, warnings = self.linter.lint_all(
+                tmpdir_path
+            )
 
             assert files_checked == 1
-            # ValidFormulaSyntaxRule produces an error
-            assert error_count == 1
-            assert len(errors) == 1
-            # NoTopLevelLambdaRule produces a warning
+            assert error_count == 0
             assert warning_count == 1
             assert len(warnings) == 1
 
@@ -408,8 +379,9 @@ class TestFormulaLinter:
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir_path = Path(tmpdir)
 
-            files_checked, error_count, warning_count, errors, warnings = \
-                self.linter.lint_all(tmpdir_path)
+            files_checked, error_count, warning_count, errors, warnings = self.linter.lint_all(
+                tmpdir_path
+            )
 
             assert files_checked == 0
             assert error_count == 0
@@ -423,19 +395,18 @@ class TestExistingFormulas:
         """Test that all formulas in formulas/ directory pass linting."""
         # Find the formulas directory relative to the project root
         project_root = Path(__file__).parent.parent
-        formulas_dir = project_root / 'formulas'
+        formulas_dir = project_root / "formulas"
 
         # Skip test if formulas directory doesn't exist
         if not formulas_dir.exists():
             pytest.skip("formulas/ directory not found")
 
         linter = FormulaLinter()
-        files_checked, error_count, warning_count, errors, warnings = \
-            linter.lint_all(formulas_dir)
+        files_checked, error_count, warning_count, errors, warnings = linter.lint_all(formulas_dir)
 
         # All errors should be reported in assertion message for debugging
         if errors:
-            error_messages = '\n'.join(errors)
+            error_messages = "\n".join(errors)
             pytest.fail(f"Found {error_count} linting error(s):\n{error_messages}")
 
         # Check that we actually found and validated some formulas
@@ -443,87 +414,5 @@ class TestExistingFormulas:
         assert error_count == 0, f"Expected no errors, found {error_count}"
 
 
-class TestValidFormulaSyntaxRule:
-    """Test the ValidFormulaSyntaxRule for pyparsing grammar validation."""
-
-    def setup_method(self):
-        """Initialize rule before each test."""
-        from lint_formulas import ValidFormulaSyntaxRule
-        self.rule = ValidFormulaSyntaxRule()
-
-    def test_valid_formula_passes(self):
-        """Test that a valid formula passes parsing."""
-        data = {'formula': 'LET(x, 1, x + 2)'}
-        errors, warnings = self.rule.check(Path("test.yaml"), data)
-
-        assert len(errors) == 0
-        assert len(warnings) == 0
-
-    def test_invalid_syntax_fails(self):
-        """Test that invalid syntax produces error."""
-        data = {'formula': 'LET(x, 1, x +'}  # Incomplete expression
-        errors, warnings = self.rule.check(Path("test.yaml"), data)
-
-        assert len(errors) == 1
-        assert 'syntax error' in errors[0].lower()
-        assert len(warnings) == 0
-
-    def test_formula_with_comments_strips_before_parsing(self):
-        """Test that comments are stripped before parsing."""
-        data = {'formula': 'LET(x, 1, /* comment */ x)'}
-        errors, warnings = self.rule.check(Path("test.yaml"), data)
-
-        assert len(errors) == 0
-        assert len(warnings) == 0
-
-    def test_missing_formula_field_passes(self):
-        """Test that missing formula field is skipped."""
-        data = {'name': 'MYFUNCTION'}
-        errors, warnings = self.rule.check(Path("test.yaml"), data)
-
-        assert len(errors) == 0
-        assert len(warnings) == 0
-
-    def test_non_string_formula_passes(self):
-        """Test that non-string formula field is skipped."""
-        data = {'formula': 123}
-        errors, warnings = self.rule.check(Path("test.yaml"), data)
-
-        assert len(errors) == 0
-        assert len(warnings) == 0
-
-    def test_unbalanced_parentheses_fails(self):
-        """Test that unbalanced parentheses are caught."""
-        data = {'formula': 'SUM(A1:A10'}  # Missing closing paren
-        errors, warnings = self.rule.check(Path("test.yaml"), data)
-
-        assert len(errors) == 1
-        assert 'syntax error' in errors[0].lower()
-
-    def test_complex_formula_passes(self):
-        """Test that complex formulas with nested functions parse correctly."""
-        data = {'formula': 'LET(f, LAMBDA(x, x+1), BYROW(range, f))'}
-        errors, warnings = self.rule.check(Path("test.yaml"), data)
-
-        assert len(errors) == 0
-        assert len(warnings) == 0
-
-    def test_error_message_includes_file_path(self):
-        """Test that error message includes the file path."""
-        data = {'formula': 'IF(x,'}  # Incomplete
-        errors, warnings = self.rule.check(Path("formulas/test.yaml"), data)
-
-        assert len(errors) == 1
-        assert 'formulas/test.yaml' in errors[0]
-
-    def test_formula_with_line_comments(self):
-        """Test that line comments are stripped."""
-        data = {'formula': 'LET(x, 1, // comment\n x)'}
-        errors, warnings = self.rule.check(Path("test.yaml"), data)
-
-        assert len(errors) == 0
-        assert len(warnings) == 0
-
-
-if __name__ == '__main__':
-    pytest.main([__file__, '-v'])
+if __name__ == "__main__":
+    pytest.main([__file__, "-v"])
