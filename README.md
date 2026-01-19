@@ -2336,7 +2336,7 @@ v1.0.2 Transforms wide-format data into long-format (tidy data) by unpivoting sp
   ),
   
   _validate_fc, IF(OR(fc < 1, fc >= num_cols),
-    (XLOOKUP("fixedcols must be between 1 and " & (num_cols - 1), IF(FALSE, {1}), IF(FALSE, {1}))),
+    (XLOOKUP("fixedcols must be between 1 and " & ( num_cols - 1 ), IF(FALSE, {1}), IF(FALSE, {1}))),
     TRUE
   ),
   

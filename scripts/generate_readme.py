@@ -62,7 +62,10 @@ class FormulaParser:
         identifier = Word(alphas + "_", alphanums + "_")
         lparen = Literal("(")
         rparen = Literal(")")
+        lbrace = Literal("{")
+        rbrace = Literal("}")
         comma = Literal(",")
+        semicolon = Literal(";")
 
         # String literals (handle escaped quotes)
         # Wrap in a marker to preserve information that these were quoted
@@ -73,6 +76,15 @@ class FormulaParser:
 
         # Numbers
         number = pyparsing_common.number()
+
+        # Cell reference patterns: A1, $A$1, etc.
+        # Include underscore to prevent partial matching of identifiers like header_rows
+        cell_ref = Word(alphas + "$", alphanums + "$" + "_")
+
+        # Range reference: A1:B10, A:A, 1:1, etc.
+        # Use Regex for flexibility with sheet references and complex patterns
+        from pyparsing import Regex
+        range_ref = Regex(r'[A-Za-z$]*[0-9$]*:[A-Za-z$]*[0-9$]*')
 
         # Forward declaration for recursive expressions
         expression = Forward()
@@ -87,9 +99,38 @@ class FormulaParser:
             rparen.suppress()
         )
 
-        # Expression can be: function call, identifier, string, or number
-        expression <<= function_call | string_literal | identifier | number
+        # Array literal: {1,2,3} or {1,2;3,4}
+        # Arrays can contain expressions separated by commas (columns) and semicolons (rows)
+        # Use a simpler approach: match content inside braces without parsing structure
+        from pyparsing import Regex
+        array_literal = Regex(r'\{[^}]*\}')
 
+        # Operators (all Google Sheets operators)
+        # Arithmetic: +, -, *, /, ^
+        # String concatenation: &
+        # Comparison: =, <>, <, >, <=, >=
+        # Note: : is NOT an operator - it's handled by range_ref pattern
+        # We define these but don't strictly parse operator precedence
+        # We just need them recognized so parsing doesn't stop at them
+        from pyparsing import one_of
+        operators = one_of("+ - * / ^ & = <> < > <= >=")
+
+        # Basic term: can be a function call, string, number, array, range, or identifier
+        # Order matters: more specific patterns first
+        # range_ref must come before cell_ref (because A1:B10 contains A1)
+        # function_call must come before identifier (because FUNC is also an identifier)
+        term = function_call | string_literal | array_literal | range_ref | number | cell_ref | identifier
+
+        # Expression: one or more terms, possibly separated by operators
+        # We use ZeroOrMore to handle any number of operator-term pairs
+        # This is permissive - we don't validate syntax, just extract function calls
+        # Group the expression to prevent it from being flattened when used in DelimitedList
+        # IMPORTANT: Don't suppress operators - we need them for reconstruction
+        from pyparsing import ZeroOrMore
+        expression <<= Group(term + ZeroOrMore(operators + term))
+
+        # For parsing the entire formula, we allow multiple expressions
+        # This handles cases like: FUNC(x) + FUNC(y)
         self.grammar = expression
 
     def parse(self, formula: str) -> ParseResults:
@@ -107,17 +148,35 @@ class FormulaParser:
         """
         # Normalize: strip leading = and whitespace
         normalized = formula.lstrip('=').strip()
-        result = self.grammar.parse_string(normalized, parse_all=False)
-        cache_id = id(result)
-        self._formula_cache[cache_id] = normalized
-        return result
+        try:
+            # Try to parse the entire formula with parseAll=True
+            result = self.grammar.parse_string(normalized, parse_all=True)
+            cache_id = id(result)
+            self._formula_cache[cache_id] = normalized
+            return result
+        except ParseException:
+            # If parseAll=True fails, try with parseAll=False
+            # This handles cases where the formula has syntax we don't fully support
+            result = self.grammar.parse_string(normalized, parse_all=False)
+            cache_id = id(result)
+            self._formula_cache[cache_id] = normalized
+            return result
 
     def extract_function_calls(self, ast: ParseResults, named_functions: Set[str]) -> List[Dict[str, Any]]:
-        """Extract function calls by looking at the AST node dict."""
+        """
+        Extract function calls by walking the AST.
+
+        Args:
+            ast: ParseResults object from parsing
+            named_functions: Set of named function names to look for
+
+        Returns:
+            List of function call dictionaries sorted by depth (deepest first)
+        """
         calls = []
 
-        # Try to extract from AST first
         def walk(node, depth=0):
+            """Recursively walk AST to find function calls."""
             if isinstance(node, ParseResults):
                 node_dict = node.asDict()
                 # Check if it's a function call node
@@ -151,119 +210,89 @@ class FormulaParser:
 
         walk(ast)
 
-        # If pyparsing failed to parse completely, use regex fallback
+        # If AST walk didn't find calls, try scanning the original formula
+        # This handles cases where pyparsing couldn't fully parse complex structures
         if not calls:
-            formula = self._formula_cache.get(id(ast), "") if hasattr(self, "_formula_cache") else ""
-            if formula:
-                for func_name in named_functions:
-                    # Find all occurrences of this function call
-                    pattern = r"\b" + re.escape(func_name) + r"\s*\("
-                    for match in re.finditer(pattern, formula):
-                        # Extract arguments using balanced parenthesis matching
-                        args = self._extract_args_from_formula(formula, match.end() - 1)
-                        calls.append({"name": func_name, "args": args, "depth": 0, "node": None})
+            # Get original formula from cache
+            cache_id = id(ast)
+            if cache_id in self._formula_cache:
+                formula = self._formula_cache[cache_id]
+                calls = self._scan_for_calls(formula, named_functions)
 
+        # Return calls sorted by depth (deepest first for bottom-up expansion)
         return sorted(calls, key=lambda c: c["depth"], reverse=True)
 
-    def _extract_args_from_formula(self, formula: str, start_paren_pos: int) -> List[str]:
+    def _scan_for_calls(self, formula: str, named_functions: Set[str]) -> List[Dict[str, Any]]:
         """
-        Extract function arguments from formula using balanced parenthesis matching.
+        Scan formula text for function calls using pattern matching.
+
+        This is a fallback when AST walking fails on complex formulas.
 
         Args:
-            formula: The formula string
-            start_paren_pos: Position of the opening parenthesis
+            formula: Formula text to scan
+            named_functions: Set of function names to look for
 
         Returns:
-            List of argument strings
+            List of function call dictionaries
         """
-        # Find the matching closing parenthesis
-        paren_count = 0
-        in_string = False
-        string_char = None
-        i = start_paren_pos
+        # Build a grammar for just function calls
+        identifier = Word(alphas + "_", alphanums + "_")
+        lparen = Literal("(")
+        rparen = Literal(")")
 
-        while i < len(formula):
-            char = formula[i]
+        # Forward declaration for recursive expressions
+        expression = Forward()
 
-            # Handle string literals
-            if char in ('"', "'") and (i == 0 or formula[i-1] != '\\'):
-                if not in_string:
-                    in_string = True
-                    string_char = char
-                elif char == string_char:
-                    in_string = False
-                    string_char = None
+        # String literals
+        string_literal = (
+            (QuotedString('"', esc_char='\\') | QuotedString("'", esc_char='\\'))
+            .set_parse_action(lambda t: ('__STRING_LITERAL__', t[0]))
+        )
 
-            # Count parentheses only when not in string
-            if not in_string:
-                if char == '(':
-                    paren_count += 1
-                elif char == ')':
-                    paren_count -= 1
-                    if paren_count == 0:
-                        # Found matching closing paren
-                        args_text = formula[start_paren_pos + 1:i]
-                        return self._split_arguments(args_text)
+        # Numbers
+        number = pyparsing_common.number()
 
-            i += 1
+        # Operators
+        from pyparsing import one_of
+        operators = one_of("+ - * / ^ & = <> < > <= >=")
 
-        # If we get here, no matching paren found - return empty list
-        return []
+        # Parenthesized expression (for handling nested parens like (num_cols - 1))
+        paren_expr = Forward()
+        paren_expr <<= lparen + Group(expression) + rparen
 
-    def _split_arguments(self, args_text: str) -> List[str]:
-        """
-        Split comma-separated arguments, respecting nested parentheses and quotes.
+        # Basic term (simplified - just enough to parse arguments)
+        term = string_literal | paren_expr | number | identifier
 
-        Args:
-            args_text: String containing comma-separated arguments
+        # Expression with operators
+        from pyparsing import ZeroOrMore
+        expression <<= Group(term + ZeroOrMore(operators + term))
 
-        Returns:
-            List of argument strings
-        """
-        if not args_text.strip():
-            return []
+        # Function call pattern
+        function_call = Group(
+            identifier("function") +
+            lparen.suppress() +
+            Group(Optional(DelimitedList(expression)))("args") +
+            rparen.suppress()
+        )
 
-        args = []
-        current_arg = []
-        paren_count = 0
-        brace_count = 0
-        in_string = False
-        string_char = None
+        calls = []
+        # Use scanString to find all function calls in the formula
+        for tokens, start, end in function_call.scan_string(formula):
+            # tokens is a ParseResults with a Group, so we need to access the first element
+            if len(tokens) > 0:
+                token_dict = tokens[0].asDict()
+                if "function" in token_dict:
+                    func_name = token_dict["function"]
+                    if func_name in named_functions:
+                        args = list(token_dict["args"]) if "args" in token_dict else []
+                        calls.append({
+                            "name": func_name,
+                            "args": args,
+                            "depth": 0,  # We don't have depth info from scanning
+                            "node": None
+                        })
 
-        for i, char in enumerate(args_text):
-            # Handle string literals
-            if char in ('"', "'") and (i == 0 or args_text[i-1] != '\\'):
-                if not in_string:
-                    in_string = True
-                    string_char = char
-                elif char == string_char:
-                    in_string = False
-                    string_char = None
-
-            # Count parentheses and braces only when not in string
-            if not in_string:
-                if char == '(':
-                    paren_count += 1
-                elif char == ')':
-                    paren_count -= 1
-                elif char == '{':
-                    brace_count += 1
-                elif char == '}':
-                    brace_count -= 1
-                elif char == ',' and paren_count == 0 and brace_count == 0:
-                    # This comma is a separator
-                    args.append(''.join(current_arg).strip())
-                    current_arg = []
-                    continue
-
-            current_arg.append(char)
-
-        # Add the last argument
-        if current_arg:
-            args.append(''.join(current_arg).strip())
-
-        return args
-
+        return calls
 
     @staticmethod
     def reconstruct_call(func_name: str, args: List) -> str:
@@ -272,7 +301,7 @@ class FormulaParser:
 
         Args:
             func_name: Name of the function
-            args: List of arguments (can be strings or ParseResults)
+            args: List of arguments (can be strings, ParseResults, or lists)
 
         Returns:
             Reconstructed function call string
@@ -284,10 +313,43 @@ class FormulaParser:
                 # It's a quoted string literal, add quotes back
                 return f'"{arg[1]}"'
             elif isinstance(arg, str):
-                # It's an identifier, return as-is
+                # It's an identifier or operator, return as-is
                 return arg
             elif isinstance(arg, (int, float)):
                 return str(arg)
+            elif isinstance(arg, list):
+                # Handle list arguments (from grouped expressions)
+                # Recursively stringify each item
+                # The list may contain operators interspersed with terms
+                stringified_items = [stringify(item) for item in arg]
+
+                # Special handling for parenthesized expressions
+                # If the list is ['(', content, ')'], join without spaces around parens
+                result_parts = []
+                i = 0
+                while i < len(stringified_items):
+                    if i < len(stringified_items) - 2 and stringified_items[i] == '(':
+                        # Find matching )
+                        depth = 1
+                        j = i + 1
+                        while j < len(stringified_items) and depth > 0:
+                            if stringified_items[j] == '(':
+                                depth += 1
+                            elif stringified_items[j] == ')':
+                                depth -= 1
+                            j += 1
+                        # Join the parenthesized section without extra spaces
+                        if depth == 0:
+                            # Found matching ), join i to j-1 without spaces around parens
+                            inner = " ".join(stringified_items[i+1:j-1])
+                            result_parts.append(f"({inner})")
+                            i = j
+                            continue
+                    result_parts.append(stringified_items[i])
+                    i += 1
+
+                # Join with spaces - operators are already in the list
+                return " ".join(result_parts)
             elif isinstance(arg, dict):
                 # Handle dict representation from asDict()
                 if 'function' in arg:
@@ -483,6 +545,24 @@ def substitute_arguments(
             arg_str = arg
         elif isinstance(arg, (int, float)):
             arg_str = str(arg)
+        elif isinstance(arg, list):
+            # Handle list arguments (from grouped expressions)
+            # Use the same stringify logic as reconstruct_call
+            def stringify_item(item):
+                if isinstance(item, tuple) and len(item) == 2 and item[0] == '__STRING_LITERAL__':
+                    return f'"{item[1]}"'
+                elif isinstance(item, dict) and 'function' in item:
+                    return FormulaParser.reconstruct_call(item['function'], item.get('args', []))
+                elif isinstance(item, ParseResults):
+                    if hasattr(item, 'asDict'):
+                        d = item.asDict()
+                        if 'function' in d:
+                            return FormulaParser.reconstruct_call(d['function'], d.get('args', []))
+                    return str(item)
+                else:
+                    return str(item)
+            # Join with spaces - operators are now preserved in the list
+            arg_str = " ".join(stringify_item(item) for item in arg)
         elif isinstance(arg, ParseResults):
             # Reconstruct from parse results
             if hasattr(arg, 'asDict'):
@@ -520,6 +600,11 @@ def expand_argument(
         return f"{chr(34)}{arg[1]}{chr(34)}"
     if isinstance(arg, (int, float)):
         return str(arg)
+    # Handle list arguments (from grouped expressions)
+    if isinstance(arg, list):
+        # Recursively expand each item in the list
+        expanded_items = [expand_argument(item, all_formulas, parser, expanded_cache) for item in arg]
+        return " ".join(expanded_items)
     # Handle dict representation (from nested ParseResults converted to dict)
     if isinstance(arg, dict) and "function" in arg:
         func_name = arg["function"]
@@ -660,8 +745,12 @@ def expand_formula(
     if calls and result.lstrip('=').strip() == original_formula_text.lstrip('=').strip():
         func_names = ', '.join(sorted({c['name'] for c in calls}))
         raise ValidationError(
-            f"{name}: Formula calls {func_names} but expansion failed. "
-            f"Parser may have failed to parse zero-argument calls or complex syntax."
+            f"{name}: Formula expansion failed - calls to {func_names} were not expanded.\n"
+            f"  This indicates a parser bug. The formula may contain:\n"
+            f"  - Zero-argument function calls (e.g., BLANK())\n"
+            f"  - Complex nested structures\n"
+            f"  - Unsupported syntax that the parser cannot handle\n"
+            f"  Original formula: {original_formula_text[:100]}{'...' if len(original_formula_text) > 100 else ''}"
         )
 
     expanded_cache[name] = result
@@ -759,7 +848,7 @@ def generate_formula_list(formulas: List[Dict[str, Any]]) -> str:
         except Exception as e:
             error_msg = f"{formula['name']}: {e}"
             expansion_failures.append(error_msg)
-            print(f"  ✗ Failed to expand {formula['name']}: {e}")
+            print(f"  ✗ Failed to expand {formula['name']}: {e}", file=sys.stderr)
             # Use original formula if expansion fails (with comments stripped)
             expanded_cache[formula['name']] = strip_comments(formula['formula']).strip()
 
@@ -767,7 +856,10 @@ def generate_formula_list(formulas: List[Dict[str, Any]]) -> str:
     if expansion_failures:
         failure_details = "\n  - ".join(expansion_failures)
         raise ValidationError(
-            f"Formula expansion failures detected:\n  - {failure_details}"
+            f"❌ Formula expansion failures detected ({len(expansion_failures)} formula(s)):\n"
+            f"  - {failure_details}\n\n"
+            f"These formulas must be fixed before the README can be generated.\n"
+            f"Run the tests to help diagnose the issue: pytest tests/test_formula_parser.py -v"
         )
 
     # Generate summary list
