@@ -36,11 +36,17 @@ jobs:
         with:
           enable-cache: true
 
+      - name: Set up Python
+        run: uv python install
+
+      - name: Install dependencies
+        run: uv sync
+
       - name: Lint formula YAML files
-        run: uv run scripts/lint_formulas.py
+        run: uv run python scripts/lint_formulas.py
 
       - name: Generate README
-        run: uv run scripts/generate_readme.py
+        run: uv run python scripts/generate_readme.py
 
       - name: Check for changes
         id: changes
@@ -71,5 +77,5 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: '⚠️ README.md needs to be regenerated. Please run `uv run scripts/generate_readme.py` locally and commit the changes.'
+              body: '⚠️ README.md needs to be regenerated. Please run `uv run python scripts/generate_readme.py` locally and commit the changes.'
             })
