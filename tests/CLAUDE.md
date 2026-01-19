@@ -91,9 +91,10 @@ Based on issues #95 and #96, future work should add tests for:
    - Multiple calls to same function
 
 3. **Linter rules**:
-   - Test each linter rule individually
+   - Test each linter rule individually (see `test_linter.py` for comprehensive examples)
    - Test that invalid formulas are caught
    - Test that valid formulas pass
+   - Parameter examples rule (`require-parameter-examples`): All parameters must have non-empty `example` fields; test edge cases like zero (`0`), falsy values, quoted strings (`'""'`), and function calls (`BLANK()`)
 
 ## Dependencies
 
