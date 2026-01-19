@@ -8,17 +8,19 @@ This script:
 3. Generates README.md with a list of formulas
 """
 
-import sys
 import re
+import sys
 from pathlib import Path
-from typing import Dict, List, Any, Set, Tuple
+from typing import Any, Dict, List
+
 import yaml
-from pyparsing import ParseException, ParseResults
 from formula_parser import FormulaParser, strip_comments
+from pyparsing import ParseException, ParseResults
 
 
 class ValidationError(Exception):
     """Raised when a YAML file doesn't meet the schema requirements."""
+
     pass
 
 
@@ -43,8 +45,8 @@ def validate_formula_yaml(data: Dict[str, Any], filename: str) -> None:
     Raises:
         ValidationError: If validation fails
     """
-    required_fields = ['name', 'version', 'description', 'parameters', 'formula']
-    optional_fields = ['notes']
+    required_fields = ["name", "version", "description", "parameters", "formula"]
+    optional_fields = ["notes"]
 
     # Check required fields exist and are not empty
     for field in required_fields:
@@ -54,28 +56,28 @@ def validate_formula_yaml(data: Dict[str, Any], filename: str) -> None:
             raise ValidationError(f"{filename}: Required field '{field}' is empty")
 
     # Validate field types
-    if not isinstance(data['name'], str):
+    if not isinstance(data["name"], str):
         raise ValidationError(f"{filename}: Field 'name' must be a string")
 
-    if not isinstance(data['version'], (str, float, int)):
+    if not isinstance(data["version"], (str, float, int)):
         raise ValidationError(f"{filename}: Field 'version' must be a string or number")
 
-    if not isinstance(data['description'], str):
+    if not isinstance(data["description"], str):
         raise ValidationError(f"{filename}: Field 'description' must be a string")
 
-    if not isinstance(data['parameters'], list):
+    if not isinstance(data["parameters"], list):
         raise ValidationError(f"{filename}: Field 'parameters' must be a list")
 
-    if not isinstance(data['formula'], str):
+    if not isinstance(data["formula"], str):
         raise ValidationError(f"{filename}: Field 'formula' must be a string")
 
     # Validate parameters structure
-    for i, param in enumerate(data['parameters']):
+    for i, param in enumerate(data["parameters"]):
         if not isinstance(param, dict):
             raise ValidationError(f"{filename}: Parameter {i} must be a dictionary")
-        if 'name' not in param:
+        if "name" not in param:
             raise ValidationError(f"{filename}: Parameter {i} missing required field 'name'")
-        if 'description' not in param:
+        if "description" not in param:
             raise ValidationError(f"{filename}: Parameter {i} missing required field 'description'")
 
     # Check for unexpected fields
@@ -85,7 +87,9 @@ def validate_formula_yaml(data: Dict[str, Any], filename: str) -> None:
         print(f"Warning: {filename} contains unexpected fields: {', '.join(unexpected_fields)}")
 
 
-def build_dependency_graph(formulas: List[Dict[str, Any]], parser: FormulaParser) -> Dict[str, List[str]]:
+def build_dependency_graph(
+    formulas: List[Dict[str, Any]], parser: FormulaParser
+) -> Dict[str, List[str]]:
     """
     Build dependency graph by parsing formulas and finding function calls.
 
@@ -97,18 +101,18 @@ def build_dependency_graph(formulas: List[Dict[str, Any]], parser: FormulaParser
         Dict mapping formula names to list of dependencies (formulas they call)
     """
     graph = {}
-    named_functions = {f['name'] for f in formulas}
+    named_functions = {f["name"] for f in formulas}
 
     for formula in formulas:
-        name = formula['name']
-        formula_text = formula['formula']
+        name = formula["name"]
+        formula_text = formula["formula"]
 
         try:
             ast = parser.parse(formula_text)
             calls = parser.extract_function_calls(ast, named_functions)
             # Get unique dependencies
-            dependencies = list({c['name'] for c in calls})
-        except ParseException as e:
+            dependencies = list({c["name"] for c in calls})
+        except ParseException:
             # Formula doesn't parse or has no function calls
             print(f"  Note: {name} formula doesn't call other named functions")
             dependencies = []
@@ -128,37 +132,35 @@ def detect_cycles(graph: Dict[str, List[str]]) -> List[str]:
     Returns:
         List of cycle descriptions (empty if no cycles)
     """
-    WHITE, GRAY, BLACK = 0, 1, 2
-    color = {node: WHITE for node in graph}
+    white, gray, black = 0, 1, 2
+    color = dict.fromkeys(graph, white)
     cycles = []
 
     def dfs(node: str, path: List[str]):
         """DFS helper function."""
-        color[node] = GRAY
+        color[node] = gray
         path.append(node)
 
         for neighbor in graph.get(node, []):
-            if color[neighbor] == GRAY:
+            if color[neighbor] == gray:
                 # Found a cycle
                 cycle_start = path.index(neighbor)
                 cycle = path[cycle_start:] + [neighbor]
-                cycles.append(' → '.join(cycle))
-            elif color[neighbor] == WHITE:
+                cycles.append(" → ".join(cycle))
+            elif color[neighbor] == white:
                 dfs(neighbor, path[:])
 
-        color[node] = BLACK
+        color[node] = black
 
     for node in graph:
-        if color[node] == WHITE:
+        if color[node] == white:
             dfs(node, [])
 
     return cycles
 
 
 def substitute_arguments(
-    formula_text: str,
-    parameters: List[Dict[str, Any]],
-    arguments: List[Any]
+    formula_text: str, parameters: List[Dict[str, Any]], arguments: List[Any]
 ) -> str:
     """
     Substitute parameters with argument values.
@@ -173,21 +175,20 @@ def substitute_arguments(
     """
     if len(parameters) != len(arguments):
         raise ValueError(
-            f"Parameter count mismatch: expected {len(parameters)}, "
-            f"got {len(arguments)}"
+            f"Parameter count mismatch: expected {len(parameters)}, got {len(arguments)}"
         )
 
     result = formula_text
 
     # Substitute each parameter
     for param, arg in zip(parameters, arguments):
-        param_name = param['name']
+        param_name = param["name"]
 
         # Convert argument to string
         # Handle empty argument placeholder
-        if arg == '__EMPTY__':
+        if arg == "__EMPTY__":
             arg_str = ""
-        elif isinstance(arg, tuple) and len(arg) == 2 and arg[0] == '__STRING_LITERAL__':
+        elif isinstance(arg, tuple) and len(arg) == 2 and arg[0] == "__STRING_LITERAL__":
             # It's a marked string literal, add quotes back
             arg_str = f'"{arg[1]}"'
         elif isinstance(arg, str):
@@ -199,9 +200,9 @@ def substitute_arguments(
             # Handle list arguments (from grouped expressions)
             # Use the same stringify logic as reconstruct_call
             def stringify_item(item):
-                if item == '__EMPTY__':
+                if item == "__EMPTY__":
                     return ""
-                elif isinstance(item, tuple) and len(item) == 2 and item[0] == '__PARENTHESIZED__':
+                if isinstance(item, tuple) and len(item) == 2 and item[0] == "__PARENTHESIZED__":
                     # Parenthesized expression - stringify inner and wrap
                     inner_expr = item[1]
                     # Convert ParseResults to list if needed
@@ -209,28 +210,27 @@ def substitute_arguments(
                         inner_expr = list(inner_expr)
                     inner = stringify_item(inner_expr)
                     return f"({inner})"
-                elif isinstance(item, tuple) and len(item) == 2 and item[0] == '__STRING_LITERAL__':
+                if isinstance(item, tuple) and len(item) == 2 and item[0] == "__STRING_LITERAL__":
                     return f'"{item[1]}"'
-                elif isinstance(item, dict) and 'function' in item:
-                    return FormulaParser.reconstruct_call(item['function'], item.get('args', []))
-                elif isinstance(item, ParseResults):
-                    if hasattr(item, 'asDict'):
+                if isinstance(item, dict) and "function" in item:
+                    return FormulaParser.reconstruct_call(item["function"], item.get("args", []))
+                if isinstance(item, ParseResults):
+                    if hasattr(item, "asDict"):
                         d = item.asDict()
-                        if 'function' in d:
-                            return FormulaParser.reconstruct_call(d['function'], d.get('args', []))
+                        if "function" in d:
+                            return FormulaParser.reconstruct_call(d["function"], d.get("args", []))
                     return str(item)
-                else:
-                    return str(item)
+                return str(item)
+
             # Join with spaces - operators are now preserved in the list
             arg_str = " ".join(stringify_item(item) for item in arg)
         elif isinstance(arg, ParseResults):
             # Reconstruct from parse results
-            if hasattr(arg, 'asDict'):
+            if hasattr(arg, "asDict"):
                 node_dict = arg.asDict()
-                if 'function' in node_dict:
+                if "function" in node_dict:
                     arg_str = FormulaParser.reconstruct_call(
-                        node_dict['function'],
-                        node_dict.get('args', [])
+                        node_dict["function"], node_dict.get("args", [])
                     )
                 else:
                     arg_str = str(arg)
@@ -241,18 +241,17 @@ def substitute_arguments(
 
         # Use word boundaries to avoid partial replacements
         # Won't replace 'range' in 'input_range'
-        pattern = r'\b' + re.escape(param_name) + r'\b'
+        pattern = r"\b" + re.escape(param_name) + r"\b"
         result = re.sub(pattern, arg_str, result)
 
     return result
-
 
 
 def expand_argument(
     arg: Any,
     all_formulas: Dict[str, Dict[str, Any]],
     parser: FormulaParser,
-    expanded_cache: Dict[str, str]
+    expanded_cache: Dict[str, str],
 ) -> str:
     if isinstance(arg, str):
         return arg
@@ -271,7 +270,9 @@ def expand_argument(
     # Handle list arguments (from grouped expressions)
     if isinstance(arg, list):
         # Recursively expand each item in the list
-        expanded_items = [expand_argument(item, all_formulas, parser, expanded_cache) for item in arg]
+        expanded_items = [
+            expand_argument(item, all_formulas, parser, expanded_cache) for item in arg
+        ]
         return " ".join(expanded_items)
     # Handle dict representation (from nested ParseResults converted to dict)
     if isinstance(arg, dict) and "function" in arg:
@@ -282,15 +283,14 @@ def expand_argument(
             func_expanded = expand_formula(func_def, all_formulas, parser, expanded_cache)
             func_expanded_stripped = func_expanded.lstrip("=").strip()
             # Recursively expand inner args
-            expanded_inner_args = [expand_argument(a, all_formulas, parser, expanded_cache) for a in inner_args]
+            expanded_inner_args = [
+                expand_argument(a, all_formulas, parser, expanded_cache) for a in inner_args
+            ]
             substituted = substitute_arguments(
-                func_expanded_stripped,
-                func_def["parameters"],
-                expanded_inner_args
+                func_expanded_stripped, func_def["parameters"], expanded_inner_args
             )
             return f"({substituted})"
-        else:
-            return FormulaParser.reconstruct_call(func_name, inner_args)
+        return FormulaParser.reconstruct_call(func_name, inner_args)
     if isinstance(arg, ParseResults) and hasattr(arg, "asDict"):
         node_dict = arg.asDict()
         if "function" in node_dict:
@@ -301,13 +301,10 @@ def expand_argument(
                 func_expanded = expand_formula(func_def, all_formulas, parser, expanded_cache)
                 func_expanded_stripped = func_expanded.lstrip("=").strip()
                 substituted = substitute_arguments(
-                    func_expanded_stripped,
-                    func_def["parameters"],
-                    inner_args
+                    func_expanded_stripped, func_def["parameters"], inner_args
                 )
                 return f"({substituted})"
-            else:
-                return FormulaParser.reconstruct_call(func_name, inner_args)
+            return FormulaParser.reconstruct_call(func_name, inner_args)
     return str(arg)
 
 
@@ -315,7 +312,7 @@ def expand_formula(
     formula_data: Dict[str, Any],
     all_formulas: Dict[str, Dict[str, Any]],
     parser: FormulaParser,
-    expanded_cache: Dict[str, str]
+    expanded_cache: Dict[str, str],
 ) -> str:
     """
     Recursively expand formula by substituting function calls.
@@ -329,14 +326,14 @@ def expand_formula(
     Returns:
         Fully expanded formula text
     """
-    name = formula_data['name']
+    name = formula_data["name"]
 
     # Check cache
     if name in expanded_cache:
         return expanded_cache[name]
 
     # Strip comments from formula before processing
-    formula_text = strip_comments(formula_data['formula']).strip()
+    formula_text = strip_comments(formula_data["formula"]).strip()
     original_formula_text = formula_text  # Save for validation
     named_functions = set(all_formulas.keys())
 
@@ -361,8 +358,8 @@ def expand_formula(
     # Expand each function call
     result = formula_text
     for call in top_level_calls:
-        func_name = call['name']
-        args = call['args']
+        func_name = call["name"]
+        args = call["args"]
 
         # Get function definition
         func_def = all_formulas[func_name]
@@ -377,13 +374,11 @@ def expand_formula(
         func_expanded = expand_formula(func_def, all_formulas, parser, expanded_cache)
 
         # Strip leading = from the expanded formula (it will be inlined)
-        func_expanded_stripped = func_expanded.lstrip('=').strip()
+        func_expanded_stripped = func_expanded.lstrip("=").strip()
 
         # Map arguments to parameters
         substituted = substitute_arguments(
-            func_expanded_stripped,
-            func_def['parameters'],
-            expanded_args
+            func_expanded_stripped, func_def["parameters"], expanded_args
         )
 
         # Replace function call in result
@@ -393,7 +388,7 @@ def expand_formula(
 
     # If the original formula had = prefix, preserve it
     # Remove extra parentheses if the entire formula is just one substitution
-    if result.startswith('(') and result.endswith(')') and result.count('(') == result.count(')'):
+    if result.startswith("(") and result.endswith(")") and result.count("(") == result.count(")"):
         # Check if it's just wrapped - try to unwrap
         inner = result[1:-1]
         # Simple heuristic: if no calls were made or if this was a complete replacement
@@ -402,16 +397,24 @@ def expand_formula(
 
     # Ensure = prefix for expanded formulas that need it
     # If the result starts with a formula function (LET, LAMBDA, etc.) and doesn't have =, add it
-    if not result.startswith('='):
+    if not result.startswith("="):
         # Check if it starts with a common formula function
-        formula_starters = ['LET(', 'LAMBDA(', 'BYROW(', 'BYCOL(', 'MAKEARRAY(', 'FILTER(', 'DENSIFY(']
+        formula_starters = [
+            "LET(",
+            "LAMBDA(",
+            "BYROW(",
+            "BYCOL(",
+            "MAKEARRAY(",
+            "FILTER(",
+            "DENSIFY(",
+        ]
         if any(result.startswith(starter) for starter in formula_starters):
-            result = '=' + result
+            result = "=" + result
 
     # Validation: If we had dependencies but the result equals the original formula,
     # the parser failed to expand the function calls
-    if calls and result.lstrip('=').strip() == original_formula_text.lstrip('=').strip():
-        func_names = ', '.join(sorted({c['name'] for c in calls}))
+    if calls and result.lstrip("=").strip() == original_formula_text.lstrip("=").strip():
+        func_names = ", ".join(sorted({c["name"] for c in calls}))
         raise ValidationError(
             f"{name}: Formula expansion failed - calls to {func_names} were not expanded.\n"
             f"  This indicates a parser bug. The formula may contain:\n"
@@ -439,8 +442,8 @@ def load_and_validate_formulas(root_dir: Path) -> List[Dict[str, Any]]:
         ValidationError: If any file fails validation
     """
     formulas = []
-    formulas_dir = root_dir / 'formulas'
-    yaml_files = sorted(formulas_dir.glob('*.yaml'))
+    formulas_dir = root_dir / "formulas"
+    yaml_files = sorted(formulas_dir.glob("*.yaml"))
 
     if not yaml_files:
         print("Warning: No .yaml files found in formulas directory")
@@ -448,7 +451,7 @@ def load_and_validate_formulas(root_dir: Path) -> List[Dict[str, Any]]:
 
     for yaml_file in yaml_files:
         try:
-            with open(yaml_file, 'r', encoding='utf-8') as f:
+            with open(yaml_file, encoding="utf-8") as f:
                 data = yaml.safe_load(f)
 
             if data is None:
@@ -457,17 +460,17 @@ def load_and_validate_formulas(root_dir: Path) -> List[Dict[str, Any]]:
             validate_formula_yaml(data, yaml_file.name)
 
             # Add filename for linking
-            data['filename'] = yaml_file.name
+            data["filename"] = yaml_file.name
             formulas.append(data)
 
             print(f"✓ Validated {yaml_file.name}")
 
         except yaml.YAMLError as e:
-            raise ValidationError(f"{yaml_file.name}: Invalid YAML syntax - {e}")
+            raise ValidationError(f"{yaml_file.name}: Invalid YAML syntax - {e}") from e
         except Exception as e:
             if isinstance(e, ValidationError):
                 raise
-            raise ValidationError(f"{yaml_file.name}: Error reading file - {e}")
+            raise ValidationError(f"{yaml_file.name}: Error reading file - {e}") from e
 
     # Check for circular dependencies
     if formulas:
@@ -478,9 +481,7 @@ def load_and_validate_formulas(root_dir: Path) -> List[Dict[str, Any]]:
 
         if cycles:
             cycle_desc = "\n".join(f"  - {cycle}" for cycle in cycles)
-            raise ValidationError(
-                f"Circular dependencies detected:\n{cycle_desc}"
-            )
+            raise ValidationError(f"Circular dependencies detected:\n{cycle_desc}")
 
         print("✓ No circular dependencies found")
 
@@ -500,25 +501,25 @@ def generate_formula_list(formulas: List[Dict[str, Any]]) -> str:
     if not formulas:
         return "_No formulas available yet._\n"
 
-    sorted_formulas = sorted(formulas, key=lambda f: f['name'].lower())
+    sorted_formulas = sorted(formulas, key=lambda f: f["name"].lower())
 
     # Expand formulas (replace function calls with definitions)
     print("\nExpanding formula compositions...")
     parser = FormulaParser()
-    all_formulas = {f['name']: f for f in formulas}
+    all_formulas = {f["name"]: f for f in formulas}
     expanded_cache = {}
     expansion_failures = []
 
     for formula in sorted_formulas:
         try:
-            expanded = expand_formula(formula, all_formulas, parser, expanded_cache)
+            expand_formula(formula, all_formulas, parser, expanded_cache)
             print(f"  ✓ Expanded {formula['name']}")
         except Exception as e:
             error_msg = f"{formula['name']}: {e}"
             expansion_failures.append(error_msg)
             print(f"  ✗ Failed to expand {formula['name']}: {e}", file=sys.stderr)
             # Use original formula if expansion fails (with comments stripped)
-            expanded_cache[formula['name']] = strip_comments(formula['formula']).strip()
+            expanded_cache[formula["name"]] = strip_comments(formula["formula"]).strip()
 
     # If any formulas failed to expand, raise an error to block the build
     if expansion_failures:
@@ -533,12 +534,11 @@ def generate_formula_list(formulas: List[Dict[str, Any]]) -> str:
     # Generate summary list
     lines = ["### Quick Reference\n"]
     for formula in sorted_formulas:
-        name = formula['name']
-        filename = formula['filename']
-        description = formula['description'].strip()
-        description_clean = ' '.join(description.split())
+        name = formula["name"]
+        description = formula["description"].strip()
+        description_clean = " ".join(description.split())
         # Create anchor link to detailed section (GitHub auto-generates anchors from headers)
-        anchor = name.lower().replace(' ', '-')
+        anchor = name.lower().replace(" ", "-")
         lines.append(f"- **[{name}](#{anchor})** - {description_clean}")
 
     lines.append("")  # blank line
@@ -546,74 +546,73 @@ def generate_formula_list(formulas: List[Dict[str, Any]]) -> str:
 
     # Generate detailed sections with copy-pastable content
     for formula in sorted_formulas:
-        name = formula['name']
-        filename = formula['filename']
-        description = formula['description'].strip()
-        description_clean = ' '.join(description.split())
-        version = formula['version']
-        parameters = formula.get('parameters', [])
+        name = formula["name"]
+        description = formula["description"].strip()
+        description_clean = " ".join(description.split())
+        version = formula["version"]
+        parameters = formula.get("parameters", [])
         # Use expanded formula
-        formula_text = expanded_cache.get(name, formula['formula'].strip())
-        notes = formula.get('notes', '')
+        formula_text = expanded_cache.get(name, formula["formula"].strip())
+        notes = formula.get("notes", "")
 
         # Create expandable section
-        lines.append(f"<details>")
+        lines.append("<details>")
         lines.append(f"<summary><strong>{name}</strong></summary>\n")
 
         # 1. Function name
         lines.append(f"### {name}\n")
 
         # 2. Description with version
-        lines.append(f"**Description**\n")
-        lines.append(f"```")
+        lines.append("**Description**\n")
+        lines.append("```")
         lines.append(f"v{version} {description_clean}")
-        lines.append(f"```\n")
+        lines.append("```\n")
 
         # 3. Argument placeholders (parameter names only)
         if parameters:
-            lines.append(f"**Parameters**\n")
-            lines.append(f"```")
+            lines.append("**Parameters**\n")
+            lines.append("```")
             for i, param in enumerate(parameters, 1):
                 lines.append(f"{i}. {param['name']}")
-            lines.append(f"```\n")
+            lines.append("```\n")
 
         # 4. Formula definition
-        lines.append(f"**Formula**\n")
-        lines.append(f"```")
+        lines.append("**Formula**\n")
+        lines.append("```")
         lines.append(formula_text)
-        lines.append(f"```\n")
+        lines.append("```\n")
 
         # 5. Argument description and examples
         if parameters:
             for param in parameters:
-                param_name = param['name']
-                param_desc = param['description'].strip()
-                param_desc_clean = ' '.join(param_desc.split())
-                param_example = param.get('example', '')
+                param_name = param["name"]
+                param_desc = param["description"].strip()
+                param_desc_clean = " ".join(param_desc.split())
+                param_example = param.get("example", "")
 
                 # Use heading level 4 for parameter names for stronger visual hierarchy
                 lines.append(f"#### {param_name}\n")
-                lines.append(f"**Description:**\n")
-                lines.append(f"```")
+                lines.append("**Description:**\n")
+                lines.append("```")
                 lines.append(param_desc_clean)
-                lines.append(f"```\n")
+                lines.append("```\n")
 
                 if param_example:
-                    lines.append(f"**Example:**\n")
-                    lines.append(f"```")
+                    lines.append("**Example:**\n")
+                    lines.append("```")
                     lines.append(f"{param_example}")
-                    lines.append(f"```\n")
+                    lines.append("```\n")
 
         if notes:
-            notes_clean = ' '.join(notes.strip().split())
-            lines.append(f"**Notes**\n")
-            lines.append(f"```")
+            notes_clean = " ".join(notes.strip().split())
+            lines.append("**Notes**\n")
+            lines.append("```")
             lines.append(notes_clean)
-            lines.append(f"```\n")
+            lines.append("```\n")
 
-        lines.append(f"</details>\n")
+        lines.append("</details>\n")
 
-    return '\n'.join(lines)
+    return "\n".join(lines)
 
 
 def generate_readme(template_path: Path, formulas: List[Dict[str, Any]]) -> str:
@@ -627,14 +626,14 @@ def generate_readme(template_path: Path, formulas: List[Dict[str, Any]]) -> str:
     Returns:
         Complete README content
     """
-    with open(template_path, 'r', encoding='utf-8') as f:
+    with open(template_path, encoding="utf-8") as f:
         template = f.read()
 
     formula_list = generate_formula_list(formulas)
 
     # Replace content between markers
-    start_marker = '<!-- AUTO-GENERATED CONTENT START -->'
-    end_marker = '<!-- AUTO-GENERATED CONTENT END -->'
+    start_marker = "<!-- AUTO-GENERATED CONTENT START -->"
+    end_marker = "<!-- AUTO-GENERATED CONTENT END -->"
 
     if start_marker not in template or end_marker not in template:
         raise ValueError("Template missing AUTO-GENERATED CONTENT markers")
@@ -655,8 +654,8 @@ def generate_readme(template_path: Path, formulas: List[Dict[str, Any]]) -> str:
 def main():
     """Main entry point."""
     root_dir = Path(__file__).parent.parent
-    template_path = root_dir / '.readme-template.md'
-    readme_path = root_dir / 'README.md'
+    template_path = root_dir / ".readme-template.md"
+    readme_path = root_dir / "README.md"
 
     try:
         # Load and validate all formula YAML files
@@ -665,14 +664,14 @@ def main():
         print(f"\nFound {len(formulas)} valid formula(s)")
 
         # Generate README
-        print(f"\nGenerating README from template...")
+        print("\nGenerating README from template...")
         readme_content = generate_readme(template_path, formulas)
 
         # Write README
-        with open(readme_path, 'w', encoding='utf-8') as f:
+        with open(readme_path, "w", encoding="utf-8") as f:
             f.write(readme_content)
 
-        print(f"✓ README.md generated successfully")
+        print("✓ README.md generated successfully")
         return 0
 
     except ValidationError as e:
@@ -683,5 +682,5 @@ def main():
         return 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())

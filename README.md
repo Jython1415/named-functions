@@ -2332,22 +2332,22 @@ v1.0.2 Transforms wide-format data into long-format (tidy data) by unpivoting sp
   ac, IF(OR(attributecol = "", ISBLANK(attributecol)), "Attribute", attributecol),
   vc, IF(OR(valuecol = "", ISBLANK(valuecol)), "Value", valuecol),
   fillna_val, (MAP(fillna, LAMBDA(v, IF(ISBLANK(v), "", v)))),
-  
+
   num_rows, ROWS(data),
   num_cols, COLUMNS(data),
-  
+
   _validate_dims, IF(OR(num_rows < 2, num_cols < 2),
     (XLOOKUP("Data must have at least 2 rows and 2 columns", IF(FALSE, {1}), IF(FALSE, {1}))),
     TRUE
   ),
-  
+
   _validate_fc, IF(OR(fc < 1, fc >= num_cols),
     (XLOOKUP("fixedcols must be between 1 and " & (num_cols - 1), IF(FALSE, {1}), IF(FALSE, {1}))),
     TRUE
   ),
-  
+
   all_headers, INDEX(data, 1, SEQUENCE(1, num_cols)),
-  
+
   selected_cols, IF(OR(select_columns = "", ISBLANK(select_columns)),
     SEQUENCE(1, num_cols - fc, fc + 1),
     IF(ISTEXT(INDEX(select_columns, 1, 1)),
@@ -2379,17 +2379,17 @@ v1.0.2 Transforms wide-format data into long-format (tidy data) by unpivoting sp
       )
     )
   ),
-  
+
   ncols, COLUMNS(selected_cols),
   nrows, num_rows - 1,
   total_output, nrows * ncols,
-  
+
   unpivoted, MAKEARRAY(total_output, fc + 2, LAMBDA(r, c,
     LET(
       source_row, INT((r - 1) / ncols) + 2,
       col_idx, MOD(r - 1, ncols) + 1,
       value_col_num, INDEX(selected_cols, 1, col_idx),
-      
+
       cell_value, IF(c <= fc,
         INDEX(data, source_row, c),
         IF(c = fc + 1,
@@ -2397,21 +2397,21 @@ v1.0.2 Transforms wide-format data into long-format (tidy data) by unpivoting sp
           INDEX(data, source_row, value_col_num)
         )
       ),
-      
+
       IF(AND(c = fc + 2, cell_value = "", fillna_val <> ""),
         fillna_val,
         cell_value
       )
     )
   )),
-  
+
   output_headers, MAKEARRAY(1, fc + 2, LAMBDA(r, c,
     IF(c <= fc,
       INDEX(data, 1, c),
       IF(c = fc + 1, ac, vc)
     )
   )),
-  
+
   VSTACK(output_headers, unpivoted)
 )
 ```

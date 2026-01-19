@@ -15,11 +15,11 @@ Exit codes:
 
 import sys
 from pathlib import Path
-from typing import List, Dict, Any, Tuple
-import yaml
+from typing import Any, Dict, List, Tuple
 
-from pyparsing import ParseException
+import yaml
 from formula_parser import FormulaParser, strip_comments
+from pyparsing import ParseException
 
 
 class LintRule:
@@ -48,24 +48,26 @@ class NoLeadingEqualsRule(LintRule):
 
     def __init__(self):
         super().__init__(
-            name="no-leading-equals",
-            description="Formula field must not start with '=' character"
+            name="no-leading-equals", description="Formula field must not start with '=' character"
         )
 
     def check(self, file_path: Path, data: Dict[str, Any]) -> Tuple[List[str], List[str]]:
         errors = []
         warnings = []
 
-        if 'formula' not in data:
-            return errors, warnings  # Skip if no formula field (will be caught by schema validation)
+        if "formula" not in data:
+            return (
+                errors,
+                warnings,
+            )  # Skip if no formula field (will be caught by schema validation)
 
-        formula = data['formula']
+        formula = data["formula"]
         if not isinstance(formula, str):
             return errors, warnings  # Skip if formula is not a string
 
         # Check if formula starts with '=' (ignoring leading whitespace)
         stripped = formula.lstrip()
-        if stripped.startswith('='):
+        if stripped.startswith("="):
             errors.append(
                 f"{file_path}: Formula starts with '=' character. "
                 f"Remove the leading '=' from the formula field."
@@ -80,23 +82,23 @@ class NoTopLevelLambdaRule(LintRule):
     def __init__(self):
         super().__init__(
             name="no-top-level-lambda",
-            description="Formula field must not start with uninvoked LAMBDA wrapper (Google Sheets adds this automatically)"
+            description="Formula field must not start with uninvoked LAMBDA wrapper (Google Sheets adds this automatically)",
         )
 
     def check(self, file_path: Path, data: Dict[str, Any]) -> Tuple[List[str], List[str]]:
         errors = []
         warnings = []
 
-        if 'formula' not in data:
+        if "formula" not in data:
             return errors, warnings  # Skip if no formula field
 
-        formula = data['formula']
+        formula = data["formula"]
         if not isinstance(formula, str):
             return errors, warnings  # Skip if formula is not a string
 
         # Check if formula starts with LAMBDA (ignoring leading whitespace and trailing whitespace)
         stripped = formula.strip()
-        if stripped.upper().startswith('LAMBDA('):
+        if stripped.upper().startswith("LAMBDA("):
             # Check if it's a self-executing LAMBDA (ends with invocation like )(0) or )(args))
             # Pattern: LAMBDA(...)(...)
 
@@ -111,7 +113,7 @@ class NoTopLevelLambdaRule(LintRule):
                     escape_next = False
                     continue
 
-                if char == '\\':
+                if char == "\\":
                     escape_next = True
                     continue
 
@@ -120,9 +122,9 @@ class NoTopLevelLambdaRule(LintRule):
                     continue
 
                 if not in_string:
-                    if char == '(':
+                    if char == "(":
                         paren_count += 1
-                    elif char == ')':
+                    elif char == ")":
                         paren_count -= 1
                         if paren_count == 0:
                             lambda_end = i
@@ -130,8 +132,8 @@ class NoTopLevelLambdaRule(LintRule):
 
             # Check if there's an immediate invocation after the LAMBDA
             if lambda_end >= 0 and lambda_end < len(stripped) - 1:
-                after_lambda = stripped[lambda_end + 1:].lstrip()
-                if after_lambda.startswith('('):
+                after_lambda = stripped[lambda_end + 1 :].lstrip()
+                if after_lambda.startswith("("):
                     # This is a self-executing LAMBDA - warn about it
                     # Investigation in issue #81 proved that LAMBDA(input, IF(,,))(0) and IF(,,)
                     # behave identically in all contexts. Self-executing LAMBDAs are unnecessary.
@@ -158,7 +160,7 @@ class RequireParameterExamplesRule(LintRule):
     def __init__(self):
         super().__init__(
             name="require-parameter-examples",
-            description="All parameters must have non-empty example values"
+            description="All parameters must have non-empty example values",
         )
 
     def check(self, file_path: Path, data: Dict[str, Any]) -> Tuple[List[str], List[str]]:
@@ -176,10 +178,10 @@ class RequireParameterExamplesRule(LintRule):
         warnings = []
 
         # Skip if parameters field is missing
-        if 'parameters' not in data:
+        if "parameters" not in data:
             return errors, warnings
 
-        parameters = data['parameters']
+        parameters = data["parameters"]
         if not isinstance(parameters, list):
             return errors, warnings
 
@@ -188,18 +190,18 @@ class RequireParameterExamplesRule(LintRule):
             if not isinstance(param, dict):
                 continue
 
-            param_name = param.get('name', f'parameter-{i}')
+            param_name = param.get("name", f"parameter-{i}")
 
             # Check if example field exists
-            if 'example' not in param:
+            if "example" not in param:
                 errors.append(
                     f"{file_path}: Parameter '{param_name}' is missing 'example' field. "
                     f"Provide a concrete example value (e.g., '\"A1:B10\"', '0', 'BLANK()', etc.)"
                 )
             else:
                 # Check if example is empty string
-                example = param.get('example')
-                if isinstance(example, str) and example == '':
+                example = param.get("example")
+                if isinstance(example, str) and example == "":
                     errors.append(
                         f"{file_path}: Parameter '{param_name}' has empty example. "
                         f"Provide a concrete example value (e.g., '\"A1:B10\"', '0', '\"\"', 'BLANK()', etc.)"
@@ -214,7 +216,7 @@ class ValidFormulaSyntaxRule(LintRule):
     def __init__(self):
         super().__init__(
             name="valid-formula-syntax",
-            description="Formula must be parseable by the pyparsing grammar"
+            description="Formula must be parseable by the pyparsing grammar",
         )
         self.parser = FormulaParser()
 
@@ -233,10 +235,10 @@ class ValidFormulaSyntaxRule(LintRule):
         warnings = []
 
         # Skip if formula field is missing or not a string
-        if 'formula' not in data:
+        if "formula" not in data:
             return errors, warnings
 
-        formula = data['formula']
+        formula = data["formula"]
         if not isinstance(formula, str):
             return errors, warnings
 
@@ -251,13 +253,13 @@ class ValidFormulaSyntaxRule(LintRule):
             error_msg = f"{file_path}: Formula syntax error"
 
             # Add position info if available
-            if hasattr(e, 'loc'):
+            if hasattr(e, "loc"):
                 error_msg += f" at position {e.loc}"
-            if hasattr(e, 'msg'):
+            if hasattr(e, "msg"):
                 error_msg += f": {e.msg}"
 
             # Add line/column context if available
-            if hasattr(e, 'line') and hasattr(e, 'col'):
+            if hasattr(e, "line") and hasattr(e, "col"):
                 error_msg += f"\n  Line: {e.line}\n  Location: {' ' * (e.col - 1)}^"
 
             errors.append(error_msg)
@@ -294,7 +296,7 @@ class FormulaLinter:
         warnings = []
 
         try:
-            with open(file_path, 'r', encoding='utf-8') as f:
+            with open(file_path, encoding="utf-8") as f:
                 data = yaml.safe_load(f)
 
             if not isinstance(data, dict):
@@ -325,10 +327,10 @@ class FormulaLinter:
             Tuple of (files_checked, error_count, warning_count, errors, warnings)
         """
         if directory is None:
-            directory = Path.cwd() / 'formulas'
+            directory = Path.cwd() / "formulas"
 
         # Find all .yaml files in the formulas directory
-        yaml_files = sorted(directory.glob('*.yaml'))
+        yaml_files = sorted(directory.glob("*.yaml"))
 
         all_errors = []
         all_warnings = []
@@ -374,15 +376,14 @@ def main():
         else:
             print(f"✅ All {files_checked} file(s) passed lint checks!")
         return 0
-    else:
-        print(f"❌ Found {error_count} error(s) in {files_checked} file(s):")
-        print()
-        for error in errors:
-            print(f"  {error}")
-        print()
-        print("Please fix the errors above and run the linter again.")
-        return 1
+    print(f"❌ Found {error_count} error(s) in {files_checked} file(s):")
+    print()
+    for error in errors:
+        print(f"  {error}")
+    print()
+    print("Please fix the errors above and run the linter again.")
+    return 1
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     sys.exit(main())
