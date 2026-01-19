@@ -68,9 +68,10 @@ class FormulaParser:
         semicolon = Literal(";")
 
         # String literals (handle escaped quotes)
+        # Google Sheets uses doubled-quote escaping: "" within a string represents a single "
         # Wrap in a marker to preserve information that these were quoted
         string_literal = (
-            (QuotedString('"', esc_char='\\') | QuotedString("'", esc_char='\\'))
+            (QuotedString('"', escQuote='"') | QuotedString("'", escQuote="'"))
             .set_parse_action(lambda t: ('__STRING_LITERAL__', t[0]))
         )
 
@@ -243,9 +244,9 @@ class FormulaParser:
         # Forward declaration for recursive expressions
         expression = Forward()
 
-        # String literals
+        # String literals - use Google Sheets doubled-quote escaping
         string_literal = (
-            (QuotedString('"', esc_char='\\') | QuotedString("'", esc_char='\\'))
+            (QuotedString('"', escQuote='"') | QuotedString("'", escQuote="'"))
             .set_parse_action(lambda t: ('__STRING_LITERAL__', t[0]))
         )
 
