@@ -129,9 +129,10 @@ class FormulaParser:
 
         # Array literal: {1,2,3} or {1,2;3,4}
         # Arrays can contain expressions separated by commas (columns) and semicolons (rows)
-        # Use a simpler approach: match content inside braces without parsing structure
+        # Use regex to match content inside braces, requiring at least one non-delimiter element
+        # This rejects empty arrays {} and delimiter-only arrays {,} {;} which Google Sheets rejects
         from pyparsing import Regex
-        array_literal = Regex(r'\{[^}]*\}')
+        array_literal = Regex(r'\{[^}]*[^,;\s}][^}]*\}')
 
         # Operators (all Google Sheets operators)
         # Arithmetic: +, -, *, /, ^
