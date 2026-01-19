@@ -405,7 +405,7 @@ v1.0.6 Removes empty or incomplete rows and columns from sparse data. Use mode t
 **Formula**
 
 ```
-LET(
+=LET(
   actual_mode, IF(OR(mode="", mode=0), "both", LOWER(TRIM(mode))),
   mode_parts, SPLIT(actual_mode, "-"),
   dimension, INDEX(mode_parts, 1),
@@ -426,7 +426,7 @@ LET(
             FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((IFERROR(LEN(TRIM(r)) > 0, TRUE)) * 1) >= threshold))),
             FILTER(range, BYROW(range, LAMBDA(r, COUNTA(r) >= threshold)))
           ),
-          IF(ISNA(ROWS(result)), BLANK(), result)
+          IF(ISNA(ROWS(result)), (IF(,,)), result)
         ),
         range
       ),
@@ -439,7 +439,7 @@ LET(
             FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((IFERROR(LEN(TRIM(c)) > 0, TRUE)) * 1) >= threshold))),
             FILTER(transposed, BYROW(transposed, LAMBDA(c, COUNTA(c) >= threshold)))
           ),
-          IF(ISNA(ROWS(result)), BLANK(), TRANSPOSE(result))
+          IF(ISNA(ROWS(result)), (IF(,,)), TRANSPOSE(result))
         ),
         rows_filtered
       ),
@@ -521,7 +521,7 @@ v2.0.0 Removes rows that are entirely blank from sparse data. This is a convenie
             FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((IFERROR(LEN(TRIM(r)) > 0, TRUE)) * 1) >= threshold))),
             FILTER(range, BYROW(range, LAMBDA(r, COUNTA(r) >= threshold)))
           ),
-          IF(ISNA(ROWS(result)), BLANK(), result)
+          IF(ISNA(ROWS(result)), (IF(,,)), result)
         ),
         range
       ),
@@ -534,7 +534,7 @@ v2.0.0 Removes rows that are entirely blank from sparse data. This is a convenie
             FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((IFERROR(LEN(TRIM(c)) > 0, TRUE)) * 1) >= threshold))),
             FILTER(transposed, BYROW(transposed, LAMBDA(c, COUNTA(c) >= threshold)))
           ),
-          IF(ISNA(ROWS(result)), BLANK(), TRANSPOSE(result))
+          IF(ISNA(ROWS(result)), (IF(,,)), TRANSPOSE(result))
         ),
         rows_filtered
       ),
@@ -961,7 +961,7 @@ v1.0.0 Filters rows and columns based on error status. Use mode to control which
 **Formula**
 
 ```
-LET(
+=LET(
   actual_mode, IF(OR(mode="", mode=0), "both", LOWER(TRIM(mode))),
   mode_parts, SPLIT(actual_mode, "-"),
   dimension, INDEX(mode_parts, 1),
@@ -979,10 +979,10 @@ LET(
         LET(
           num_cols, COLUMNS(range),
           IF(has_any,
-            IFNA(FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((ISERROR(r)) * 1) > 0))), BLANK()),
+            IFNA(FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((ISERROR(r)) * 1) > 0))), (IF(,,))),
             IF(has_all,
-              IFNA(FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((ISERROR(r)) * 1) = num_cols))), BLANK()),
-              IFNA(FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((ISERROR(r)) * 1) = 0))), BLANK())
+              IFNA(FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((ISERROR(r)) * 1) = num_cols))), (IF(,,))),
+              IFNA(FILTER(range, BYROW(range, LAMBDA(r, SUMPRODUCT((ISERROR(r)) * 1) = 0))), (IF(,,)))
             )
           )
         ),
@@ -995,10 +995,10 @@ LET(
           num_rows, ROWS(rows_filtered),
           TRANSPOSE(
             IF(has_any,
-              IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((ISERROR(c)) * 1) > 0))), BLANK()),
+              IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((ISERROR(c)) * 1) > 0))), (IF(,,))),
               IF(has_all,
-                IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((ISERROR(c)) * 1) = num_rows))), BLANK()),
-                IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((ISERROR(c)) * 1) = 0))), BLANK())
+                IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((ISERROR(c)) * 1) = num_rows))), (IF(,,))),
+                IFNA(FILTER(transposed, BYROW(transposed, LAMBDA(c, SUMPRODUCT((ISERROR(c)) * 1) = 0))), (IF(,,)))
               )
             )
           )
@@ -1113,12 +1113,12 @@ v1.0.0 Groups data by one or more columns and applies custom aggregation logic v
 **Formula**
 
 ```
-LET(
+=LET(
   num_rows, ROWS(data),
   num_cols, COLUMNS(data),
 
   _validate_dims, IF(OR(num_rows < 1, num_cols < 1),
-    ERROR("Data must have at least 1 row and 1 column"),
+    (XLOOKUP("Data must have at least 1 row and 1 column", IF(FALSE, {1}), IF(FALSE, {1}))),
     TRUE
   ),
 
@@ -1137,7 +1137,7 @@ LET(
       SUMPRODUCT(--(group_cols_array < 1)) > 0,
       SUMPRODUCT(--(group_cols_array > num_cols)) > 0
     ),
-    ERROR("Group column indices must be between 1 and " & num_cols),
+    (XLOOKUP("Group column indices must be between 1 and " & num_cols, IF(FALSE, {1}), IF(FALSE, {1}))),
     TRUE
   ),
 
@@ -1146,7 +1146,7 @@ LET(
       SUMPRODUCT(--(value_cols_array < 1)) > 0,
       SUMPRODUCT(--(value_cols_array > num_cols)) > 0
     ),
-    ERROR("Value column indices must be between 1 and " & num_cols),
+    (XLOOKUP("Value column indices must be between 1 and " & num_cols, IF(FALSE, {1}), IF(FALSE, {1}))),
     TRUE
   ),
 
@@ -2321,22 +2321,22 @@ v1.0.2 Transforms wide-format data into long-format (tidy data) by unpivoting sp
 **Formula**
 
 ```
-LET(
+=LET(
   fc, IF(OR(fixedcols = "", ISBLANK(fixedcols)), 1, fixedcols),
   ac, IF(OR(attributecol = "", ISBLANK(attributecol)), "Attribute", attributecol),
   vc, IF(OR(valuecol = "", ISBLANK(valuecol)), "Value", valuecol),
-  fillna_val, BLANKTOEMPTY(fillna),
+  fillna_val, (MAP(fillna, LAMBDA(v, IF(ISBLANK(v), "", v)))),
   
   num_rows, ROWS(data),
   num_cols, COLUMNS(data),
   
   _validate_dims, IF(OR(num_rows < 2, num_cols < 2),
-    ERROR("Data must have at least 2 rows and 2 columns"),
+    (XLOOKUP("Data must have at least 2 rows and 2 columns", IF(FALSE, {1}), IF(FALSE, {1}))),
     TRUE
   ),
   
   _validate_fc, IF(OR(fc < 1, fc >= num_cols),
-    ERROR("fixedcols must be between 1 and " & (num_cols - 1)),
+    (XLOOKUP("fixedcols must be between 1 and " & (num_cols - 1), IF(FALSE, {1}), IF(FALSE, {1}))),
     TRUE
   ),
   
@@ -2352,7 +2352,7 @@ LET(
             search_name, INDEX(flat_selection, 1, c),
             match_result, MATCH(search_name, all_headers, 0),
             IF(ISNA(match_result),
-              ERROR("Column '" & search_name & "' not found in headers"),
+              (XLOOKUP("Column '" & search_name & "' not found in headers", IF(FALSE, {1}), IF(FALSE, {1}))),
               match_result
             )
           )
@@ -2366,7 +2366,7 @@ LET(
             SUMPRODUCT(--(flat_indices < 1)) > 0,
             SUMPRODUCT(--(flat_indices > num_cols)) > 0
           ),
-          ERROR("Column indices must be between 1 and " & num_cols),
+          (XLOOKUP("Column indices must be between 1 and " & num_cols, IF(FALSE, {1}), IF(FALSE, {1}))),
           TRUE
         ),
         flat_indices

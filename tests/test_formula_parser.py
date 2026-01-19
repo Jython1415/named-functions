@@ -692,6 +692,18 @@ class TestParserMechanics:
         result = FormulaParser.reconstruct_call("BLANK", [])
         assert result == "BLANK()"
 
+    def test_reconstruct_call_with_parenthesized_expression(self):
+        """Test reconstruct_call() preserves parentheses in expressions."""
+        # Test case from issue: ERROR("text" & (num_cols - 1))
+        formula = 'ERROR("text" & (num_cols - 1))'
+        parser = FormulaParser()
+        ast = parser.parse(formula)
+        calls = parser.extract_function_calls(ast, {"ERROR"})
+
+        assert len(calls) == 1
+        reconstructed = FormulaParser.reconstruct_call(calls[0]["name"], calls[0]["args"])
+        assert formula == reconstructed
+
 
 if __name__ == '__main__':
     pytest.main([__file__, '-v'])

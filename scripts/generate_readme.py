@@ -23,7 +23,7 @@ import yaml
 from pyparsing import (
     Forward, Word, alphas, alphanums, QuotedString,
     Literal, Group, DelimitedList, Optional, ParseException,
-    ParseResults, pyparsing_common, MatchFirst
+    ParseResults, pyparsing_common, MatchFirst, Empty, ZeroOrMore
 )
 
 
@@ -87,16 +87,44 @@ class FormulaParser:
 
         # Forward declaration for recursive expressions
         expression = Forward()
+        parenthesized_expr = Forward()
 
         # Function call: FUNC(arg1, arg2, ...)
-        # Group the function name and arguments together
-        # Use Optional to allow zero-argument calls like BLANK()
-        function_call = Group(
+        # Support for empty arguments in function calls (e.g., IF(,,))
+        from pyparsing import FollowedBy
+
+        # An argument can be an expression OR nothing (matched via lookahead)
+        # The lookahead ensures empty args are only valid between/before commas or rparen
+        empty_arg = (FollowedBy(comma | rparen)).set_parse_action(lambda: "__EMPTY__")
+
+        # Allow expressions or empty args
+        argument = expression | empty_arg
+
+        # Use DelimitedList for comma-separated args
+        args_list = Optional(DelimitedList(argument))
+
+        # Create the function call and apply a parse action to fix spurious empty args
+        function_call_raw = Group(
             identifier("function") +
             lparen.suppress() +
-            Group(Optional(DelimitedList(expression)))("args") +
+            Group(args_list)("args") +
             rparen.suppress()
         )
+
+        # Parse action to fix args structure
+        def fix_function_call(tokens):
+            # tokens[0] is a ParseResults for the function_call
+            # tokens[0]['args'] contains the args list
+            call = tokens[0]
+            if 'args' in call:
+                args = call['args']
+                # If args is [[]] or [['__EMPTY__']], convert to []
+                if len(args) == 1:
+                    if args[0] == [] or args[0] == '__EMPTY__':
+                        call['args'] = []
+            return tokens
+
+        function_call = function_call_raw.copy().set_parse_action(fix_function_call)
 
         # Array literal: {1,2,3} or {1,2;3,4}
         # Arrays can contain expressions separated by commas (columns) and semicolons (rows)
@@ -108,25 +136,48 @@ class FormulaParser:
         # Arithmetic: +, -, *, /, ^
         # String concatenation: &
         # Comparison: =, <>, <, >, <=, >=
+        # Logical: AND, OR (used as infix operators in some formulas)
         # Note: : is NOT an operator - it's handled by range_ref pattern
         # We define these but don't strictly parse operator precedence
         # We just need them recognized so parsing doesn't stop at them
-        from pyparsing import one_of
-        operators = one_of("+ - * / ^ & = <> < > <= >=")
+        from pyparsing import one_of, CaselessKeyword
+        # Use case-insensitive matching for AND and OR since they can appear in various cases
+        and_op = CaselessKeyword("AND")
+        or_op = CaselessKeyword("OR")
+        # Regular operators with one_of (space-separated for case-sensitive matching)
+        basic_operators = one_of("+ - * / ^ & = <> < > <= >=")
+        operators = and_op | or_op | basic_operators
+
+        # Unary operators (prefix operators like unary minus: -x, --x)
+        # These are different from binary operators and can appear at the start of an expression
+        unary_operators = one_of("+ -")
 
         # Basic term: can be a function call, string, number, array, range, or identifier
         # Order matters: more specific patterns first
+        # parenthesized_expr must come first (highest precedence)
         # range_ref must come before cell_ref (because A1:B10 contains A1)
         # function_call must come before identifier (because FUNC is also an identifier)
-        term = function_call | string_literal | array_literal | range_ref | number | cell_ref | identifier
+        term = parenthesized_expr | function_call | string_literal | array_literal | range_ref | number | cell_ref | identifier
 
-        # Expression: one or more terms, possibly separated by operators
+        # Allow zero or more unary operators before a term
+        # This enables patterns like: -(expr), --(expr), +--(expr), etc.
+        unary_term = ZeroOrMore(unary_operators) + term
+
+        # Expression: one or more unary_terms, possibly separated by binary operators
         # We use ZeroOrMore to handle any number of operator-term pairs
         # This is permissive - we don't validate syntax, just extract function calls
         # Group the expression to prevent it from being flattened when used in DelimitedList
         # IMPORTANT: Don't suppress operators - we need them for reconstruction
-        from pyparsing import ZeroOrMore
-        expression <<= Group(term + ZeroOrMore(operators + term))
+        expression <<= Group(unary_term + ZeroOrMore(operators + unary_term))
+
+        # Parenthesized expression: (expression)
+        # This must be defined after expression is complete
+        # Mark parenthesized expressions so we know to add parens back during reconstruction
+        def mark_parenthesized(tokens):
+            """Mark a parenthesized expression so it can be reconstructed with parens."""
+            return [('__PARENTHESIZED__', tokens[0])]
+
+        parenthesized_expr <<= (lparen.suppress() + expression + rparen.suppress()).set_parse_action(mark_parenthesized)
 
         # For parsing the entire formula, we allow multiple expressions
         # This handles cases like: FUNC(x) + FUNC(y)
@@ -215,8 +266,20 @@ class FormulaParser:
         """
         def stringify(arg):
             """Convert argument to string representation."""
+            # Handle empty argument placeholder
+            if arg == '__EMPTY__':
+                return ""
+            # Check if it's a marked parenthesized expression
+            elif isinstance(arg, tuple) and len(arg) == 2 and arg[0] == '__PARENTHESIZED__':
+                # It's a parenthesized expression, stringify the inner expression and wrap
+                inner_expr = arg[1]
+                # Convert ParseResults to list if needed
+                if isinstance(inner_expr, ParseResults):
+                    inner_expr = list(inner_expr)
+                inner = stringify(inner_expr)
+                return f"({inner})"
             # Check if it's a marked string literal
-            if isinstance(arg, tuple) and len(arg) == 2 and arg[0] == '__STRING_LITERAL__':
+            elif isinstance(arg, tuple) and len(arg) == 2 and arg[0] == '__STRING_LITERAL__':
                 # It's a quoted string literal, add quotes back
                 return f'"{arg[1]}"'
             elif isinstance(arg, str):
@@ -278,8 +341,17 @@ class FormulaParser:
             else:
                 return str(arg)
 
-        args_str = ", ".join(stringify(arg) for arg in args)
-        return f"{func_name}({args_str})"
+        # Join arguments with commas (no spaces for empty arguments)
+        stringified_args = [stringify(arg) for arg in args]
+        args_str = ",".join(stringified_args)
+        # Add spaces around commas only if arguments are non-empty
+        # This handles IF(,,) correctly instead of IF(, , )
+        args_str_with_spaces = ""
+        for i, arg_str in enumerate(stringified_args):
+            if i > 0:
+                args_str_with_spaces += ", " if arg_str else ","
+            args_str_with_spaces += arg_str
+        return f"{func_name}({args_str_with_spaces})"
 
 
 def validate_formula_yaml(data: Dict[str, Any], filename: str) -> None:
@@ -444,7 +516,10 @@ def substitute_arguments(
         param_name = param['name']
 
         # Convert argument to string
-        if isinstance(arg, tuple) and len(arg) == 2 and arg[0] == '__STRING_LITERAL__':
+        # Handle empty argument placeholder
+        if arg == '__EMPTY__':
+            arg_str = ""
+        elif isinstance(arg, tuple) and len(arg) == 2 and arg[0] == '__STRING_LITERAL__':
             # It's a marked string literal, add quotes back
             arg_str = f'"{arg[1]}"'
         elif isinstance(arg, str):
@@ -456,7 +531,17 @@ def substitute_arguments(
             # Handle list arguments (from grouped expressions)
             # Use the same stringify logic as reconstruct_call
             def stringify_item(item):
-                if isinstance(item, tuple) and len(item) == 2 and item[0] == '__STRING_LITERAL__':
+                if item == '__EMPTY__':
+                    return ""
+                elif isinstance(item, tuple) and len(item) == 2 and item[0] == '__PARENTHESIZED__':
+                    # Parenthesized expression - stringify inner and wrap
+                    inner_expr = item[1]
+                    # Convert ParseResults to list if needed
+                    if isinstance(inner_expr, ParseResults):
+                        inner_expr = list(inner_expr)
+                    inner = stringify_item(inner_expr)
+                    return f"({inner})"
+                elif isinstance(item, tuple) and len(item) == 2 and item[0] == '__STRING_LITERAL__':
                     return f'"{item[1]}"'
                 elif isinstance(item, dict) and 'function' in item:
                     return FormulaParser.reconstruct_call(item['function'], item.get('args', []))
@@ -503,6 +588,14 @@ def expand_argument(
 ) -> str:
     if isinstance(arg, str):
         return arg
+    if isinstance(arg, tuple) and len(arg) == 2 and arg[0] == "__PARENTHESIZED__":
+        # Parenthesized expression - expand the inner part and wrap
+        inner_expr = arg[1]
+        # Convert ParseResults to list if needed
+        if isinstance(inner_expr, ParseResults):
+            inner_expr = list(inner_expr)
+        inner = expand_argument(inner_expr, all_formulas, parser, expanded_cache)
+        return f"({inner})"
     if isinstance(arg, tuple) and len(arg) == 2 and arg[0] == "__STRING_LITERAL__":
         return f"{chr(34)}{arg[1]}{chr(34)}"
     if isinstance(arg, (int, float)):
