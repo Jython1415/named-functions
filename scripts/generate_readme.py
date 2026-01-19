@@ -68,11 +68,32 @@ class FormulaParser:
 
         # String literals (handle escaped quotes)
         # Google Sheets uses doubled-quote escaping: "" within a string represents a single "
-        # Wrap in a marker to preserve information that these were quoted
-        string_literal = (
-            (QuotedString('"', escQuote='"') | QuotedString("'", escQuote="'"))
-            .set_parse_action(lambda t: ('__STRING_LITERAL__', t[0]))
-        )
+        # Note: pyparsing's esc_quote parameter has a bug when """ is followed by , and then "
+        # So we use a custom regex-based parser instead
+        from pyparsing import Regex
+
+        # Match double-quoted strings: opening ", content (with "" escapes), closing "
+        # The content can be: any char except ", OR "" (escaped quote)
+        # Pattern: " (?: [^"] | "" )* "
+        double_quoted = Regex(r'"(?:[^"]|"")*"')
+
+        # Match single-quoted strings: opening ', content (with '' escapes), closing '
+        # Pattern: ' (?: [^'] | '' )* '
+        single_quoted = Regex(r"'(?:[^']|'')*'")
+
+        def process_string_literal(t):
+            """Process a quoted string literal, unescaping doubled quotes."""
+            s = t[0]
+            # Remove opening and closing quotes
+            content = s[1:-1]
+            # Unescape doubled quotes
+            if s[0] == '"':
+                content = content.replace('""', '"')
+            else:  # single quote
+                content = content.replace("''", "'")
+            return ('__STRING_LITERAL__', content)
+
+        string_literal = (double_quoted | single_quoted).set_parse_action(process_string_literal)
 
         # Numbers
         number = pyparsing_common.number()
