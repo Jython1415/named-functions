@@ -23,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent / 'scripts'))
 
 import pytest
 from pyparsing import ParseException
-from generate_readme import FormulaParser
+from formula_parser import FormulaParser
 
 
 class TestBasicParsing:

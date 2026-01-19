@@ -34,14 +34,14 @@ class TestReadmeGeneration:
 
     def test_formula_parser_can_be_created(self):
         """Test that FormulaParser can be instantiated."""
-        from generate_readme import FormulaParser
+        from formula_parser import FormulaParser
 
         parser = FormulaParser()
         assert parser is not None
 
     def test_strip_comments_removes_comments(self):
         """Test that strip_comments removes /* */ and // comments."""
-        from generate_readme import strip_comments
+        from formula_parser import strip_comments
 
         formula_with_comments = """LET(
             /* Block comment */
@@ -59,7 +59,8 @@ class TestReadmeGeneration:
 
     def test_dependency_graph_construction(self):
         """Test building dependency graph from formulas."""
-        from generate_readme import build_dependency_graph, FormulaParser
+        from generate_readme import build_dependency_graph
+        from formula_parser import FormulaParser
 
         formulas = [
             {'name': 'A', 'formula': 'B(x)'},

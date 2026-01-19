@@ -21,10 +21,16 @@ This repository contains named Google Sheets formulas using LET and LAMBDA funct
 named-functions/
 ├── .github/workflows/*.yml    # CI/CD: test.yml (quality gate), generate-readme.yml, claude.yml
 ├── formulas/*.yaml            # Individual formula definitions
-├── scripts/*.py               # generate_readme.py (parser/expander), lint_formulas.py
+├── scripts/                   # Python package with shared modules and scripts
+│   ├── __init__.py            # Package marker
+│   ├── formula_parser.py      # Shared FormulaParser class
+│   ├── generate_readme.py     # README generator and formula expander
+│   └── lint_formulas.py       # Formula YAML linter
 ├── tests/                     # test_formula_parser.py, test_generate_readme_integration.py
 │   └── CLAUDE.md              # Testing philosophy and guidelines
-├── pytest.ini                 # Test configuration
+├── .python-version            # Python version (3.11)
+├── pyproject.toml             # Project config and centralized dependencies
+├── uv.lock                    # Dependency lockfile (commit this!)
 ├── .readme-template.md        # Template for README generation
 └── README.md                  # Auto-generated (DO NOT EDIT DIRECTLY)
 ```
@@ -61,13 +67,13 @@ formula: |
 
 ```bash
 # 1. Lint formulas
-uv run scripts/lint_formulas.py
+uv run python scripts/lint_formulas.py
 
 # 2. Generate README (validates and expands formulas)
-uv run scripts/generate_readme.py
+uv run python scripts/generate_readme.py
 
 # 3. Run test suite
-pytest tests/ -v
+uv run pytest tests/ -v
 
 # 4. Verify README updated, then commit BOTH files
 git diff README.md
@@ -91,8 +97,8 @@ git commit -m "Add/update YOUR_FORMULA"
 
 **Run tests:**
 ```bash
-pytest tests/ -v                                    # All tests
-pytest tests/ -v --cov=scripts --cov-report=term-missing  # With coverage
+uv run pytest tests/ -v                                    # All tests
+uv run pytest tests/ -v --cov=scripts --cov-report=term-missing  # With coverage
 ```
 
 **Philosophy**: Integration-first approach testing public APIs and expected behavior, not implementation details.
@@ -110,9 +116,9 @@ pytest tests/ -v --cov=scripts --cov-report=term-missing  # With coverage
 
 **Supported**: Standard Google Sheets syntax including LET, LAMBDA, nested functions, empty arguments (`IF(,,)`), unary operators (`--condition`), arrays, ranges, operators.
 
-**Known limitation**: Google Sheets doubled-quote escaping (`""`) not yet supported - use backslash escaping (`\"`).
+**Known limitation**: Google Sheets doubled-quote escaping (`""`) is now fully supported with custom regex parser.
 
-**Implementation**: FormulaParser class in `scripts/generate_readme.py`
+**Implementation**: FormulaParser class in `scripts/formula_parser.py` (shared module imported by generator and linter)
 
 ## Formula Composition
 
@@ -145,15 +151,15 @@ Formulas can call other named functions - the system automatically:
 4. Provide realistic parameter examples in YAML
 
 ### Parser Improvements
-1. Run parser tests first: `pytest tests/test_formula_parser.py -v`
-2. Improve the pyparsing grammar - never add fallback mechanisms
+1. Run parser tests first: `uv run pytest tests/test_formula_parser.py -v`
+2. Improve the pyparsing grammar in `scripts/formula_parser.py` - never add fallback mechanisms
 3. Add tests for new syntax (both positive and negative cases)
 4. Negative tests are critical - ensure invalid syntax is properly rejected
 
 ### Testing
 1. Add integration-level tests for new features (test public APIs)
 2. Include negative tests (invalid syntax should raise `ParseException`)
-3. Check coverage: `pytest tests/ --cov=scripts --cov-report=term-missing`
+3. Check coverage: `uv run pytest tests/ --cov=scripts --cov-report=term-missing`
 4. For known issues: Use `@pytest.mark.xfail(reason="issue #XXX")`
 
 ### Code Quality
@@ -170,29 +176,33 @@ Formulas can call other named functions - the system automatically:
 
 **CI fails**: README not regenerated (run generator and commit), linter errors (fix violations), test failures (fix or update tests), expansion errors (check formula syntax)
 
-**Local vs CI mismatch**: Ensure dependencies match (`uv pip install pytest pytest-cov pyyaml pyparsing`), clear pytest cache (`rm -rf .pytest_cache`)
+**Local vs CI mismatch**: Sync dependencies with `uv sync --dev`, clear pytest cache (`rm -rf .pytest_cache`)
 
 ## Dependencies
 
-- **Python**: 3.8+
-- **uv**: Package manager (used for running scripts)
-- **Core**: PyYAML, pyparsing (parsing), pytest, pytest-cov (testing)
+- **Python**: 3.8+ (project uses 3.11, specified in `.python-version`)
+- **uv**: Modern package manager for dependency management and script execution
+- **Core dependencies** (in `pyproject.toml`):
+  - Runtime: pyyaml>=6.0, pyparsing>=3.0
+  - Dev: pytest>=7.0, pytest-cov>=4.0
 
-Scripts use `uv` inline dependency declarations (PEP 723). CI workflows install dependencies explicitly.
+Dependencies are managed via `pyproject.toml` with `uv.lock` for reproducible builds. Install with `uv sync --dev`.
 
 ## Notes for Claude Code
 
 ### Critical Requirements
 
-- **Always run linter and generator**: `uv run scripts/lint_formulas.py` then `uv run scripts/generate_readme.py`
-- **Always run tests**: `pytest tests/ -v` before committing
+- **Always run linter and generator**: `uv run python scripts/lint_formulas.py` then `uv run python scripts/generate_readme.py`
+- **Always run tests**: `uv run pytest tests/ -v` before committing
 - **Commit both files**: `.yaml` AND updated `README.md` together
 - **README.md is auto-generated**: Edit `.readme-template.md` for template changes, not README.md directly
 
 ### Development Tips
 
-- **Use `uv` not `pip`**: The project uses `uv` for dependency management and script execution
+- **Use `uv` not `pip`**: Project uses `pyproject.toml` with UV for dependency management
+- **Sync dependencies first**: Run `uv sync --dev` after cloning or when dependencies change
 - **Parser is pyparsing-only**: No regex fallbacks exist (intentionally removed)
+- **Parser is shared module**: `scripts/formula_parser.py` is imported by both generator and linter
 - **Fail-fast philosophy**: Invalid syntax should be caught immediately, not silently tolerated
 - **Formula composition works**: Formulas can reference other named functions - the system automatically expands them
 - **Tests are integration-focused**: Test public APIs, not implementation details
@@ -207,9 +217,10 @@ When `gh` CLI unavailable, use `curl -u "token:$GITHUB_TOKEN"` with GitHub REST 
 ### Project Evolution Context
 
 The project has matured significantly:
-- Parser: Regex fallbacks eliminated, 100% pyparsing grammar
-- Testing: Comprehensive test suite with high coverage, integration-first approach
-- Quality: Fail-fast validation, README staleness detection, strict grammar validation
-- CI/CD: Automated testing, linting, and README generation with merge blocking
+- **Parser**: Regex fallbacks eliminated, 100% pyparsing grammar, extracted to shared module
+- **Dependencies**: Migrated from PEP 723 inline deps to UV pyproject.toml with lockfile
+- **Testing**: Comprehensive test suite with high coverage, integration-first approach
+- **Quality**: Fail-fast validation, README staleness detection, strict grammar validation
+- **CI/CD**: Automated testing, linting, and README generation with merge blocking
 
 For historical details, see issues and PRs in repository.
