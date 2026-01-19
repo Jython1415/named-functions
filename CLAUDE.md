@@ -153,4 +153,47 @@ The composition system uses pyparsing to:
 - **README.md is auto-generated**: Edit `.readme-template.md` for static content changes
 - **Use `uv` not `pip`**: The project uses `uv` for dependency management
 - **Formula composition**: Formulas can reference other named functions - the system will automatically expand them
-- **GitHub API access**: If `gh` CLI is unavailable, check for `$GITHUB_TOKEN` with `[ -n "$GITHUB_TOKEN" ] && echo "✓ Available"` and use with `curl -s -u "token:$GITHUB_TOKEN" https://api.github.com/repos/...` for GitHub operations. Note: Use the `-u` flag with `"token:$GITHUB_TOKEN"` format for basic authentication, NOT the Authorization header format.
+- **GitHub API access**: If `gh` CLI is unavailable, use the patterns documented in the "GitHub API Operations" section below.
+
+## GitHub API Operations
+
+When `gh` CLI is unavailable, use `curl` with `$GITHUB_TOKEN`. Authentication format: `-u "token:$GITHUB_TOKEN"`
+
+**Create Issue:**
+```bash
+curl -s -u "token:$GITHUB_TOKEN" -X POST \
+  https://api.github.com/repos/OWNER/REPO/issues \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Title", "body": "Body"}' | jq -r '.number'
+```
+
+**Create PR:**
+```bash
+curl -s -u "token:$GITHUB_TOKEN" -X POST \
+  https://api.github.com/repos/OWNER/REPO/pulls \
+  -H "Content-Type: application/json" \
+  -d '{"title": "Title", "body": "Body", "head": "branch", "base": "main"}' | jq -r '.number'
+```
+
+**Check CI Status:**
+```bash
+curl -s -u "token:$GITHUB_TOKEN" \
+  "https://api.github.com/repos/OWNER/REPO/commits/SHA/check-runs" | \
+  jq -r '.check_runs[] | "\(.name): \(.conclusion // "in_progress")"'
+```
+
+**Poll for CI Completion:**
+```bash
+for i in {1..24}; do
+  status=$(curl -s -u "token:$GITHUB_TOKEN" \
+    "https://api.github.com/repos/OWNER/REPO/commits/SHA/check-runs" | \
+    jq -r '.check_runs[0].conclusion')
+  [ "$status" != "null" ] && break
+  sleep 10
+done
+```
+
+**Key Points:**
+- Use `-s` flag with curl for clean output; parse with `jq` (never manual string parsing)
+- Use heredocs `-d @- <<'EOF'` for multiline JSON
+- Check-runs API is more reliable than commit status API
