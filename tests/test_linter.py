@@ -226,12 +226,13 @@ class TestFormulaLinter:
         self.linter = FormulaLinter()
 
     def test_linter_has_expected_rules(self):
-        """Test that linter has both expected rules registered."""
+        """Test that linter has all expected rules registered."""
         rule_names = {rule.name for rule in self.linter.rules}
 
         assert "no-leading-equals" in rule_names
         assert "no-top-level-lambda" in rule_names
-        assert len(self.linter.rules) == 2
+        assert "valid-formula-syntax" in rule_names
+        assert len(self.linter.rules) == 3
 
     def test_lint_file_with_valid_yaml(self):
         """Test linting a valid YAML file with no linter errors."""
@@ -274,14 +275,20 @@ class TestFormulaLinter:
             temp_path.unlink()
 
     def test_lint_file_with_self_executing_lambda_warning(self):
-        """Test linting file with self-executing LAMBDA produces warning."""
+        """Test linting file with self-executing LAMBDA produces error and warning.
+
+        Self-executing LAMBDAs produce:
+        - 1 error from ValidFormulaSyntaxRule (invalid syntax per pyparsing grammar)
+        - 1 warning from NoTopLevelLambdaRule (unnecessary self-executing pattern)
+        """
         with tempfile.NamedTemporaryFile(mode="w", suffix=".yaml", delete=False) as f:
             yaml.dump({"name": "TEST_FUNC", "formula": "LAMBDA(x, x+1)(0)"}, f)
             temp_path = Path(f.name)
 
         try:
             errors, warnings = self.linter.lint_file(temp_path)
-            assert len(errors) == 0
+            assert len(errors) == 1
+            assert "syntax" in errors[0].lower()
             assert len(warnings) == 1
             assert "self-executing" in warnings[0].lower()
         finally:
@@ -357,7 +364,10 @@ class TestFormulaLinter:
             assert len(errors) == 1
 
     def test_lint_all_counts_warnings(self):
-        """Test that lint_all correctly counts warnings from multiple files."""
+        """Test that lint_all correctly counts warnings from multiple files.
+
+        Self-executing LAMBDAs produce both an error (syntax) and a warning (pattern).
+        """
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir_path = Path(tmpdir)
 
@@ -370,8 +380,9 @@ class TestFormulaLinter:
             )
 
             assert files_checked == 1
-            assert error_count == 0
-            assert warning_count == 1
+            assert error_count == 1  # From ValidFormulaSyntaxRule
+            assert warning_count == 1  # From NoTopLevelLambdaRule
+            assert len(errors) == 1
             assert len(warnings) == 1
 
     def test_lint_all_with_empty_directory(self):
