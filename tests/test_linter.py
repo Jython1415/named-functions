@@ -225,12 +225,13 @@ class TestFormulaLinter:
         self.linter = FormulaLinter()
 
     def test_linter_has_expected_rules(self):
-        """Test that linter has both expected rules registered."""
+        """Test that linter has all expected rules registered."""
         rule_names = {rule.name for rule in self.linter.rules}
 
         assert 'no-leading-equals' in rule_names
         assert 'no-top-level-lambda' in rule_names
-        assert len(self.linter.rules) == 2
+        assert 'valid-formula-syntax' in rule_names
+        assert len(self.linter.rules) == 3
 
     def test_lint_file_with_valid_yaml(self):
         """Test linting a valid YAML file with no linter errors."""
@@ -282,7 +283,12 @@ class TestFormulaLinter:
             temp_path.unlink()
 
     def test_lint_file_with_self_executing_lambda_warning(self):
-        """Test linting file with self-executing LAMBDA produces warning."""
+        """Test linting file with self-executing LAMBDA produces error and warning.
+
+        Self-executing LAMBDAs like LAMBDA(x, x+1)(0) are not supported by the
+        pyparsing grammar (they're syntax errors), even though NoTopLevelLambdaRule
+        would warn about them if the parser accepted them.
+        """
         with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
             yaml.dump({
                 'name': 'TEST_FUNC',
@@ -292,7 +298,10 @@ class TestFormulaLinter:
 
         try:
             errors, warnings = self.linter.lint_file(temp_path)
-            assert len(errors) == 0
+            # ValidFormulaSyntaxRule rejects it as a syntax error
+            assert len(errors) == 1
+            assert 'syntax error' in errors[0].lower()
+            # NoTopLevelLambdaRule also produces a warning
             assert len(warnings) == 1
             assert 'self-executing' in warnings[0].lower()
         finally:
@@ -368,11 +377,15 @@ class TestFormulaLinter:
             assert len(errors) == 1
 
     def test_lint_all_counts_warnings(self):
-        """Test that lint_all correctly counts warnings from multiple files."""
+        """Test that lint_all correctly counts warnings and errors.
+
+        Self-executing LAMBDAs like LAMBDA(x, x+1)(0) are not supported by the
+        pyparsing grammar, so they generate both errors and warnings.
+        """
         with tempfile.TemporaryDirectory() as tmpdir:
             tmpdir_path = Path(tmpdir)
 
-            # Create file with warning (self-executing LAMBDA)
+            # Create file with error and warning (self-executing LAMBDA)
             with open(tmpdir_path / "warning.yaml", 'w') as f:
                 yaml.dump({
                     'name': 'WARNING_FUNC',
@@ -383,7 +396,10 @@ class TestFormulaLinter:
                 self.linter.lint_all(tmpdir_path)
 
             assert files_checked == 1
-            assert error_count == 0
+            # ValidFormulaSyntaxRule produces an error
+            assert error_count == 1
+            assert len(errors) == 1
+            # NoTopLevelLambdaRule produces a warning
             assert warning_count == 1
             assert len(warnings) == 1
 
@@ -425,6 +441,88 @@ class TestExistingFormulas:
         # Check that we actually found and validated some formulas
         assert files_checked > 0, "No formula files found in formulas/ directory"
         assert error_count == 0, f"Expected no errors, found {error_count}"
+
+
+class TestValidFormulaSyntaxRule:
+    """Test the ValidFormulaSyntaxRule for pyparsing grammar validation."""
+
+    def setup_method(self):
+        """Initialize rule before each test."""
+        from lint_formulas import ValidFormulaSyntaxRule
+        self.rule = ValidFormulaSyntaxRule()
+
+    def test_valid_formula_passes(self):
+        """Test that a valid formula passes parsing."""
+        data = {'formula': 'LET(x, 1, x + 2)'}
+        errors, warnings = self.rule.check(Path("test.yaml"), data)
+
+        assert len(errors) == 0
+        assert len(warnings) == 0
+
+    def test_invalid_syntax_fails(self):
+        """Test that invalid syntax produces error."""
+        data = {'formula': 'LET(x, 1, x +'}  # Incomplete expression
+        errors, warnings = self.rule.check(Path("test.yaml"), data)
+
+        assert len(errors) == 1
+        assert 'syntax error' in errors[0].lower()
+        assert len(warnings) == 0
+
+    def test_formula_with_comments_strips_before_parsing(self):
+        """Test that comments are stripped before parsing."""
+        data = {'formula': 'LET(x, 1, /* comment */ x)'}
+        errors, warnings = self.rule.check(Path("test.yaml"), data)
+
+        assert len(errors) == 0
+        assert len(warnings) == 0
+
+    def test_missing_formula_field_passes(self):
+        """Test that missing formula field is skipped."""
+        data = {'name': 'MYFUNCTION'}
+        errors, warnings = self.rule.check(Path("test.yaml"), data)
+
+        assert len(errors) == 0
+        assert len(warnings) == 0
+
+    def test_non_string_formula_passes(self):
+        """Test that non-string formula field is skipped."""
+        data = {'formula': 123}
+        errors, warnings = self.rule.check(Path("test.yaml"), data)
+
+        assert len(errors) == 0
+        assert len(warnings) == 0
+
+    def test_unbalanced_parentheses_fails(self):
+        """Test that unbalanced parentheses are caught."""
+        data = {'formula': 'SUM(A1:A10'}  # Missing closing paren
+        errors, warnings = self.rule.check(Path("test.yaml"), data)
+
+        assert len(errors) == 1
+        assert 'syntax error' in errors[0].lower()
+
+    def test_complex_formula_passes(self):
+        """Test that complex formulas with nested functions parse correctly."""
+        data = {'formula': 'LET(f, LAMBDA(x, x+1), BYROW(range, f))'}
+        errors, warnings = self.rule.check(Path("test.yaml"), data)
+
+        assert len(errors) == 0
+        assert len(warnings) == 0
+
+    def test_error_message_includes_file_path(self):
+        """Test that error message includes the file path."""
+        data = {'formula': 'IF(x,'}  # Incomplete
+        errors, warnings = self.rule.check(Path("formulas/test.yaml"), data)
+
+        assert len(errors) == 1
+        assert 'formulas/test.yaml' in errors[0]
+
+    def test_formula_with_line_comments(self):
+        """Test that line comments are stripped."""
+        data = {'formula': 'LET(x, 1, // comment\n x)'}
+        errors, warnings = self.rule.check(Path("test.yaml"), data)
+
+        assert len(errors) == 0
+        assert len(warnings) == 0
 
 
 if __name__ == '__main__':
