@@ -41,6 +41,8 @@ A collection of named Excel/Google Sheets formulas using LET and LAMBDA function
 - **[TAKECOLS](#takecols)** - Takes the first or last N columns from a range. Positive num_cols takes from the start, negative num_cols takes from the end. Uses the transpose pattern to work with columns.
 - **[TAKEROWS](#takerows)** - Takes the first or last N rows from a range. Positive num_rows takes from the start, negative num_rows takes from the end. Useful for extracting top or bottom rows from a dataset.
 - **[TEXTAFTER](#textafter)** - Returns text that appears after a specified delimiter. Supports forward/backward search, case-sensitive/insensitive matching, and customizable error handling. Replicates Excel's TEXTAFTER function for Google Sheets.
+- **[TEXTBEFORE](#textbefore)** - Returns text that appears before a specified delimiter. Supports forward/backward search, case-sensitive/insensitive matching, and customizable error handling. Replicates Excel's TEXTBEFORE function for Google Sheets.
+- **[TEXTSPLIT](#textsplit)** - Splits text into an array using a delimiter (1D version - columns only). This is a simplified version of Excel's TEXTSPLIT function that splits text into a single row with multiple columns. Wraps Google Sheets' SPLIT function with consistent naming. Future versions may support 2D splitting with row delimiters.
 - **[TRIMRANGE](#trimrange)** - Removes empty rows and columns from the outer edges of a range, similar to how TRIM removes leading and trailing spaces from text. Only affects the boundaries (top, bottom, left, right) - preserves empty rows/columns in the middle of data. A row/column is considered empty if all cells are blank or empty strings. Returns BLANK() if the entire range is empty after trimming.
 - **[UNPIVOT](#unpivot)** - Transforms wide-format data into long-format (tidy data) by unpivoting specified columns into attribute-value pairs.
 - **[VSTACKBLANK](#vstackblank)** - Stacks two arrays vertically, padding narrower arrays with blank cells to match dimensions. Convenience wrapper for VSTACKFILL using BLANK().
@@ -2529,6 +2531,207 @@ Value to return if delimiter not found. Use NA() for
 
 ```
 NA()
+```
+
+</details>
+
+<details>
+<summary><strong>TEXTBEFORE</strong></summary>
+
+### TEXTBEFORE
+
+**Description**
+
+```
+v1.0.0 Returns text that appears before a specified delimiter. Supports forward/backward search, case-sensitive/insensitive matching, and customizable error handling. Replicates Excel's TEXTBEFORE function for Google Sheets.
+```
+
+**Parameters**
+
+```
+1. text
+2. delimiter
+3. instance_num
+4. match_mode
+5. match_end
+6. if_not_found
+```
+
+**Formula**
+
+```
+LET(
+  
+  IF(instance_num = 0, NA(),
+    
+    IF(delimiter = "",
+      IF(instance_num > 0, "", text),
+      LET(
+        
+        search_text, IF(match_mode = 1, UPPER(text), text),
+        search_delim, IF(match_mode = 1, UPPER(delimiter), delimiter),
+
+        
+        total_count, (LEN(search_text) - LEN(SUBSTITUTE(search_text, search_delim, ""))) / LEN(search_delim),
+
+        
+        positive_inst, IF(instance_num < 0, total_count + instance_num + 1, instance_num),
+
+        
+        found, positive_inst > 0 AND positive_inst <= total_count,
+
+        IF(found,
+          LET(
+            
+            
+            marker, "§§§TEXTBEFORE§§§",
+            text_with_marker, SUBSTITUTE(search_text, search_delim, marker, positive_inst),
+            delim_pos, FIND(marker, text_with_marker),
+
+            
+            MID(text, 1, delim_pos - 1)
+          ),
+          
+          IF(match_end = 1,
+            
+            IF(instance_num > 0, text, ""),
+            
+            if_not_found
+          )
+        )
+      )
+    )
+  )
+)
+```
+
+#### text
+
+**Description:**
+
+```
+The source text to search within
+```
+
+**Example:**
+
+```
+"john.doe@example.com"
+```
+
+#### delimiter
+
+**Description:**
+
+```
+The text marking where extraction ends (extracts text before this)
+```
+
+**Example:**
+
+```
+"@"
+```
+
+#### instance_num
+
+**Description:**
+
+```
+Which occurrence to use. Positive counts from left (1=first), negative from right (-1=last). Cannot be 0.
+```
+
+**Example:**
+
+```
+1
+```
+
+#### match_mode
+
+**Description:**
+
+```
+Case sensitivity. 0 for case-sensitive (default), 1 for case-insensitive
+```
+
+#### match_end
+
+**Description:**
+
+```
+End-of-text handling. 0 requires exact match (default), 1 treats end of text as delimiter
+```
+
+#### if_not_found
+
+**Description:**
+
+```
+Value to return if delimiter not found. Use NA() for
+```
+
+**Example:**
+
+```
+NA()
+```
+
+</details>
+
+<details>
+<summary><strong>TEXTSPLIT</strong></summary>
+
+### TEXTSPLIT
+
+**Description**
+
+```
+v1.0.0 Splits text into an array using a delimiter (1D version - columns only). This is a simplified version of Excel's TEXTSPLIT function that splits text into a single row with multiple columns. Wraps Google Sheets' SPLIT function with consistent naming. Future versions may support 2D splitting with row delimiters.
+```
+
+**Parameters**
+
+```
+1. text
+2. col_delimiter
+```
+
+**Formula**
+
+```
+LET(
+  result, SPLIT(text, col_delimiter),
+  result
+)
+```
+
+#### text
+
+**Description:**
+
+```
+The text to split
+```
+
+**Example:**
+
+```
+"apple,banana,cherry"
+```
+
+#### col_delimiter
+
+**Description:**
+
+```
+The delimiter to use for splitting text into columns
+```
+
+**Example:**
+
+```
+","
 ```
 
 </details>
