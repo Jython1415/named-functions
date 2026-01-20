@@ -1,0 +1,23 @@
+name: SINGLE
+version: 1.0.0
+
+description: >
+  Returns a single value from an array at the specified row and column position.
+  This function extracts a single cell from a range using 1-based indexing.
+  It is useful for retrieving a specific value from a larger array or range.
+
+parameters:
+  - name: array
+    description: The input array or range to extract from
+    example: "A1:C10"
+
+  - name: row
+    description: The row index (1-based) of the value to extract
+    example: "2"
+
+  - name: column
+    description: The column index (1-based) of the value to extract
+    example: "3"
+
+formula: |
+  INDEX(array, row, column)

@@ -43,6 +43,7 @@ A collection of named Excel/Google Sheets formulas using LET and LAMBDA function
 - **[TEXTAFTER](#textafter)** - Returns text that appears after a specified delimiter. Supports forward/backward search, case-sensitive/insensitive matching, and customizable error handling. Replicates Excel's TEXTAFTER function for Google Sheets.
 - **[TEXTBEFORE](#textbefore)** - Returns text that appears before a specified delimiter. Supports forward/backward search, case-sensitive/insensitive matching, and customizable error handling. Replicates Excel's TEXTBEFORE function for Google Sheets.
 - **[TEXTSPLIT](#textsplit)** - Splits text into an array using a delimiter (1D version - columns only). This is a simplified version of Excel's TEXTSPLIT function that splits text into a single row with multiple columns. Wraps Google Sheets' SPLIT function with consistent naming. Future versions may support 2D splitting with row delimiters.
+- **[TRIMRANGE](#trimrange)** - Removes empty rows and columns from the outer edges of a range, similar to how TRIM removes leading and trailing spaces from text. Only affects the boundaries (top, bottom, left, right) - preserves empty rows/columns in the middle of data. A row/column is considered empty if all cells are blank or empty strings. Returns BLANK() if the entire range is empty after trimming.
 - **[UNPIVOT](#unpivot)** - Transforms wide-format data into long-format (tidy data) by unpivoting specified columns into attribute-value pairs.
 - **[VSTACKBLANK](#vstackblank)** - Stacks two arrays vertically, padding narrower arrays with blank cells to match dimensions. Convenience wrapper for VSTACKFILL using BLANK().
 - **[VSTACKFILL](#vstackfill)** - Stacks two arrays vertically, padding narrower arrays with a specified fill value to match dimensions. Prevents #N/A errors from mismatched widths.
@@ -2731,6 +2732,125 @@ The delimiter to use for splitting text into columns
 
 ```
 ","
+```
+
+</details>
+
+<details>
+<summary><strong>TRIMRANGE</strong></summary>
+
+### TRIMRANGE
+
+**Description**
+
+```
+v1.0.0 Removes empty rows and columns from the outer edges of a range, similar to how TRIM removes leading and trailing spaces from text. Only affects the boundaries (top, bottom, left, right) - preserves empty rows/columns in the middle of data. A row/column is considered empty if all cells are blank or empty strings. Returns BLANK() if the entire range is empty after trimming.
+```
+
+**Parameters**
+
+```
+1. range
+2. trim_rows
+3. trim_cols
+```
+
+**Formula**
+
+```
+=LET(
+  
+  rows_result, IF(trim_rows,
+    LET(
+      
+      row_nonempty, BYROW(range, LAMBDA(r, COUNTA(r) > 0)),
+
+      
+      first_row, XMATCH(TRUE, row_nonempty),
+
+      
+      last_row, XMATCH(TRUE, row_nonempty, 0, -1),
+
+      
+      IF(ISERROR(first_row),
+        (IF(,,)),
+        
+        CHOOSEROWS(range, SEQUENCE(last_row - first_row + 1, 1, first_row))
+      )
+    ),
+    range
+  ),
+
+  
+  IF(ISBLANK(rows_result),
+    (IF(,,)),
+
+    
+    IF(trim_cols,
+      LET(
+        
+        transposed, TRANSPOSE(rows_result),
+
+        
+        col_nonempty, BYROW(transposed, LAMBDA(c, COUNTA(c) > 0)),
+
+        
+        first_col, XMATCH(TRUE, col_nonempty),
+        last_col, XMATCH(TRUE, col_nonempty, 0, -1),
+
+        
+        IF(ISERROR(first_col),
+          (IF(,,)),
+          
+          TRANSPOSE(CHOOSEROWS(transposed, SEQUENCE(last_col - first_col + 1, 1, first_col)))
+        )
+      ),
+      rows_result
+    )
+  )
+)
+```
+
+#### range
+
+**Description:**
+
+```
+The data range to trim from edges
+```
+
+**Example:**
+
+```
+A1:E10
+```
+
+#### trim_rows
+
+**Description:**
+
+```
+Whether to remove empty rows from top and bottom edges. Use TRUE to trim rows, FALSE to keep all rows.
+```
+
+**Example:**
+
+```
+TRUE
+```
+
+#### trim_cols
+
+**Description:**
+
+```
+Whether to remove empty columns from left and right edges. Use TRUE to trim columns, FALSE to keep all columns.
+```
+
+**Example:**
+
+```
+TRUE
 ```
 
 </details>
