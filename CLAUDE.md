@@ -19,7 +19,7 @@ This repository contains named Google Sheets formulas using LET and LAMBDA funct
 
 ```
 named-functions/
-├── .github/workflows/*.yml    # CI/CD: test.yml (quality gate), generate-readme.yml, claude.yml
+├── .github/workflows/*.yml    # CI/CD: ci.yml (quality gate), generate-readme.yml, claude.yml
 ├── formulas/*.yaml            # Individual formula definitions
 ├── scripts/                   # Python package with shared modules and scripts
 │   ├── __init__.py            # Package marker
@@ -88,8 +88,8 @@ git commit -m "Add/update YOUR_FORMULA"
 
 ### CI/CD
 
-- **test.yml**: Primary quality gate (runs tests, linter, generator, verifies README up-to-date)
-- **generate-readme.yml**: Auto-commits README on main, comments on PRs if stale
+- **ci.yml**: Primary quality gate (runs Python/YAML linting, tests, formula linter, README generation, verification)
+- **generate-readme.yml**: Auto-commits README on main, comments on PRs if stale (runs formula linter before generation)
 - **claude.yml**: Claude Code integration (restricted to git, uv, python commands)
 
 **Formula expansion failures block PR merges** - all formulas must be syntactically valid and fully expandable.
