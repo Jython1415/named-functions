@@ -66,7 +66,7 @@ def test_feature_name(self):
 
 ## CI Integration
 
-Tests run automatically on every push and PR via `.github/workflows/test.yml`:
+Tests run automatically on every push and PR via `.github/workflows/ci.yml`:
 - Installs pytest, pyyaml, pyparsing
 - Runs pytest test suite
 - Runs linter on all formulas
