@@ -1,4 +1,4 @@
-name: Generate README
+name: Auto-update README
 
 on:
   push:
