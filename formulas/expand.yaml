@@ -1,0 +1,43 @@
+name: EXPAND
+version: 1.0.0
+
+description: >
+  Expands or pads an array to specified dimensions. If target dimensions exceed
+  current array size, fills new cells with the pad_with value. If target dimensions
+  are less than current size, dimensions remain unchanged (no shrinking).
+
+parameters:
+  - name: array
+    description: The input array to expand
+    example: "A1:C5"
+
+  - name: rows
+    description: Target number of rows (must be >= 1). If less than current rows, no change.
+    example: 10
+
+  - name: cols
+    description: Target number of columns (must be >= 1). If less than current cols, no change.
+    example: 5
+
+  - name: pad_with
+    description: Value to use for padding new cells (use BLANK() for empty cells)
+    example: "BLANK()"
+
+formula: |
+  LET(
+    current_rows, ROWS(array),
+    current_cols, COLUMNS(array),
+
+    /* Expand rows if target rows > current rows */
+    rows_expanded, IF(rows > current_rows,
+                      VSTACK(array, MAKEARRAY(rows - current_rows, current_cols, LAMBDA(r, c, pad_with))),
+                      array),
+
+    /* Get the actual number of rows after row expansion */
+    rows_after_expansion, ROWS(rows_expanded),
+
+    /* Expand columns if target cols > current cols */
+    IF(cols > current_cols,
+       HSTACK(rows_expanded, MAKEARRAY(rows_after_expansion, cols - current_cols, LAMBDA(r, c, pad_with))),
+       rows_expanded)
+  )
