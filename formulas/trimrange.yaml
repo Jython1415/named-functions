@@ -1,0 +1,79 @@
+name: TRIMRANGE
+version: 1.0.0
+
+description: >
+  Removes empty rows and columns from the outer edges of a range, similar to how
+  TRIM removes leading and trailing spaces from text. Only affects the boundaries
+  (top, bottom, left, right) - preserves empty rows/columns in the middle of data.
+  A row/column is considered empty if all cells are blank or empty strings.
+  Returns BLANK() if the entire range is empty after trimming.
+
+parameters:
+  - name: range
+    description: The data range to trim from edges
+    example: "A1:E10"
+
+  - name: trim_rows
+    description: >
+      Whether to remove empty rows from top and bottom edges. Use TRUE to trim
+      rows, FALSE to keep all rows.
+    example: "TRUE"
+
+  - name: trim_cols
+    description: >
+      Whether to remove empty columns from left and right edges. Use TRUE to trim
+      columns, FALSE to keep all columns.
+    example: "TRUE"
+
+formula: |
+  LET(
+    /* Apply row trimming if requested */
+    rows_result, IF(trim_rows,
+      LET(
+        /* Identify which rows are non-empty (TRUE if row has any content) */
+        row_nonempty, BYROW(range, LAMBDA(r, COUNTA(r) > 0)),
+
+        /* Find first non-empty row (search from start) */
+        first_row, XMATCH(TRUE, row_nonempty),
+
+        /* Find last non-empty row (search from end, mode -1) */
+        last_row, XMATCH(TRUE, row_nonempty, 0, -1),
+
+        /* If no non-empty rows found, return BLANK() */
+        IF(ISERROR(first_row),
+          BLANK(),
+          /* Extract rows from first to last non-empty */
+          CHOOSEROWS(range, SEQUENCE(last_row - first_row + 1, 1, first_row))
+        )
+      ),
+      range
+    ),
+
+    /* If row trimming resulted in BLANK, return early */
+    IF(ISBLANK(rows_result),
+      BLANK(),
+
+      /* Apply column trimming if requested */
+      IF(trim_cols,
+        LET(
+          /* Transpose to treat columns as rows */
+          transposed, TRANSPOSE(rows_result),
+
+          /* Identify which columns are non-empty */
+          col_nonempty, BYROW(transposed, LAMBDA(c, COUNTA(c) > 0)),
+
+          /* Find first and last non-empty columns */
+          first_col, XMATCH(TRUE, col_nonempty),
+          last_col, XMATCH(TRUE, col_nonempty, 0, -1),
+
+          /* If no non-empty columns found, return BLANK() */
+          IF(ISERROR(first_col),
+            BLANK(),
+            /* Extract columns and transpose back */
+            TRANSPOSE(CHOOSEROWS(transposed, SEQUENCE(last_col - first_col + 1, 1, first_col)))
+          )
+        ),
+        rows_result
+      )
+    )
+  )
