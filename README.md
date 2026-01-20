@@ -24,6 +24,7 @@ A collection of named Excel/Google Sheets formulas using LET and LAMBDA function
 - **[ERROR](#error)** - Displays a custom error message as an #N/A error with a configurable tooltip. Uses an empty array trick to ensure the error always triggers, regardless of cell contents. Useful for validation and user-friendly error reporting.
 - **[ERRORFILTER](#errorfilter)** - Filters rows and columns based on error status. Use mode to control which dimensions to process and which error conditions to filter for. Useful for data validation, debugging, and cleaning error-prone data.
 - **[ERRORSTO](#errorsto)** - Replaces error cells with a specified value while preserving non-error cells. Accepts either a single value or a range. When given a range, automatically applies the replacement to all cells using MAP. Useful for error handling and data cleaning where errors need to be replaced with a default value.
+- **[EXPAND](#expand)** - Expands or pads an array to specified dimensions. If target dimensions exceed current array size, fills new cells with the pad_with value. If target dimensions are less than current size, dimensions remain unchanged (no shrinking).
 - **[GROUPBY](#groupby)** - Groups data by one or more columns and applies custom aggregation logic via LAMBDA functions, implementing SQL-like GROUP BY functionality. Does not handle headers - provide data without header row.
 - **[HEADERS](#headers)** - Extracts the header row (first row) from a data range. This is useful for separating headers from data, especially when working with structured data.
 - **[HSTACKBLANK](#hstackblank)** - Stacks two arrays horizontally, padding shorter arrays with blank cells to match dimensions. Convenience wrapper for HSTACKFILL using BLANK().
@@ -32,12 +33,17 @@ A collection of named Excel/Google Sheets formulas using LET and LAMBDA function
 - **[NONERRORSTO](#nonerrorsto)** - Replaces non-error cells with a specified value while preserving error cells. Accepts either a single value or a range. When given a range, automatically applies the replacement to all cells using MAP. Useful for masking valid data while keeping errors visible for debugging or validation purposes.
 - **[OMITCOLS](#omitcols)** - Excludes specified columns from a range. This is the negation of CHOOSECOLS - instead of selecting columns to keep, it selects columns to remove.
 - **[OMITROWS](#omitrows)** - Excludes specified rows from a range. This is the negation of CHOOSEROWS - instead of selecting rows to keep, it selects rows to remove.
+- **[PERCENTOF](#percentof)** - Calculates the percentage contribution of a subset relative to a total. Returns a decimal value where 0.25 represents 25%. Fails with #DIV/0! if the total sum is zero.
 - **[RANGEREF](#rangeref)** - Converts a range reference to its A1 notation string representation. Returns the range in A1 notation (e.g., "A1:B10") for the given range. For single-cell ranges, returns just the cell reference (e.g., "A1" instead of "A1:A1"). This is useful for generating dynamic range references, creating hyperlinks, or building formulas programmatically.
+- **[SINGLE](#single)** - Returns a single value from an array at the specified row and column position. This function extracts a single cell from a range using 1-based indexing. It is useful for retrieving a specific value from a larger array or range.
 - **[SUBSTITUTEMULTI](#substitutemulti)** - Applies multiple SUBSTITUTE operations sequentially using a two-column mapping range. Substitutions are applied in row order, with later substitutions operating on the results of earlier ones. This enables powerful multi-stage text transformations.
 - **[TAKE](#take)** - Takes a rectangular region from a range (both rows and columns). This is the Excel-compatible TAKE function. Positive row/col values take from start, negative from end. Both parameters are required.
 - **[TAKECOLS](#takecols)** - Takes the first or last N columns from a range. Positive num_cols takes from the start, negative num_cols takes from the end. Uses the transpose pattern to work with columns.
 - **[TAKEROWS](#takerows)** - Takes the first or last N rows from a range. Positive num_rows takes from the start, negative num_rows takes from the end. Useful for extracting top or bottom rows from a dataset.
 - **[TEXTAFTER](#textafter)** - Returns text that appears after a specified delimiter. Supports forward/backward search, case-sensitive/insensitive matching, and customizable error handling. Replicates Excel's TEXTAFTER function for Google Sheets.
+- **[TEXTBEFORE](#textbefore)** - Returns text that appears before a specified delimiter. Supports forward/backward search, case-sensitive/insensitive matching, and customizable error handling. Replicates Excel's TEXTBEFORE function for Google Sheets.
+- **[TEXTSPLIT](#textsplit)** - Splits text into an array using a delimiter (1D version - columns only). This is a simplified version of Excel's TEXTSPLIT function that splits text into a single row with multiple columns. Wraps Google Sheets' SPLIT function with consistent naming. Future versions may support 2D splitting with row delimiters.
+- **[TRIMRANGE](#trimrange)** - Removes empty rows and columns from the outer edges of a range, similar to how TRIM removes leading and trailing spaces from text. Only affects the boundaries (top, bottom, left, right) - preserves empty rows/columns in the middle of data. A row/column is considered empty if all cells are blank or empty strings. Returns BLANK() if the entire range is empty after trimming.
 - **[UNPIVOT](#unpivot)** - Transforms wide-format data into long-format (tidy data) by unpivoting specified columns into attribute-value pairs.
 - **[VSTACKBLANK](#vstackblank)** - Stacks two arrays vertically, padding narrower arrays with blank cells to match dimensions. Convenience wrapper for VSTACKFILL using BLANK().
 - **[VSTACKFILL](#vstackfill)** - Stacks two arrays vertically, padding narrower arrays with a specified fill value to match dimensions. Prevents #N/A errors from mismatched widths.
@@ -1091,6 +1097,106 @@ Value to use in place of errors
 </details>
 
 <details>
+<summary><strong>EXPAND</strong></summary>
+
+### EXPAND
+
+**Description**
+
+```
+v1.0.0 Expands or pads an array to specified dimensions. If target dimensions exceed current array size, fills new cells with the pad_with value. If target dimensions are less than current size, dimensions remain unchanged (no shrinking).
+```
+
+**Parameters**
+
+```
+1. array
+2. rows
+3. cols
+4. pad_with
+```
+
+**Formula**
+
+```
+LET(
+  current_rows, ROWS(array),
+  current_cols, COLUMNS(array),
+
+  
+  rows_expanded, IF(rows > current_rows,
+                    VSTACK(array, MAKEARRAY(rows - current_rows, current_cols, LAMBDA(r, c, pad_with))),
+                    array),
+
+  
+  rows_after_expansion, ROWS(rows_expanded),
+
+  
+  IF(cols > current_cols,
+     HSTACK(rows_expanded, MAKEARRAY(rows_after_expansion, cols - current_cols, LAMBDA(r, c, pad_with))),
+     rows_expanded)
+)
+```
+
+#### array
+
+**Description:**
+
+```
+The input array to expand
+```
+
+**Example:**
+
+```
+A1:C5
+```
+
+#### rows
+
+**Description:**
+
+```
+Target number of rows (must be >= 1). If less than current rows, no change.
+```
+
+**Example:**
+
+```
+10
+```
+
+#### cols
+
+**Description:**
+
+```
+Target number of columns (must be >= 1). If less than current cols, no change.
+```
+
+**Example:**
+
+```
+5
+```
+
+#### pad_with
+
+**Description:**
+
+```
+Value to use for padding new cells (use BLANK() for empty cells)
+```
+
+**Example:**
+
+```
+BLANK()
+```
+
+</details>
+
+<details>
 <summary><strong>GROUPBY</strong></summary>
 
 ### GROUPBY
@@ -1721,6 +1827,64 @@ Row numbers to exclude (1-based indices). Can be a single number, an array of nu
 </details>
 
 <details>
+<summary><strong>PERCENTOF</strong></summary>
+
+### PERCENTOF
+
+**Description**
+
+```
+v1.0.0 Calculates the percentage contribution of a subset relative to a total. Returns a decimal value where 0.25 represents 25%. Fails with #DIV/0! if the total sum is zero.
+```
+
+**Parameters**
+
+```
+1. data_subset
+2. data_all
+```
+
+**Formula**
+
+```
+LET(
+  subset_sum, SUM(data_subset),
+  total_sum, SUM(data_all),
+  subset_sum / total_sum
+)
+```
+
+#### data_subset
+
+**Description:**
+
+```
+Range or value representing the part of the total to calculate percentage for
+```
+
+**Example:**
+
+```
+A1:A10
+```
+
+#### data_all
+
+**Description:**
+
+```
+Range or value representing the complete total
+```
+
+**Example:**
+
+```
+A1:A100
+```
+
+</details>
+
+<details>
 <summary><strong>RANGEREF</strong></summary>
 
 ### RANGEREF
@@ -1763,6 +1927,75 @@ The range to convert to A1 notation
 
 ```
 A1:B10
+```
+
+</details>
+
+<details>
+<summary><strong>SINGLE</strong></summary>
+
+### SINGLE
+
+**Description**
+
+```
+v1.0.0 Returns a single value from an array at the specified row and column position. This function extracts a single cell from a range using 1-based indexing. It is useful for retrieving a specific value from a larger array or range.
+```
+
+**Parameters**
+
+```
+1. array
+2. row
+3. column
+```
+
+**Formula**
+
+```
+INDEX(array, row, column)
+```
+
+#### array
+
+**Description:**
+
+```
+The input array or range to extract from
+```
+
+**Example:**
+
+```
+A1:C10
+```
+
+#### row
+
+**Description:**
+
+```
+The row index (1-based) of the value to extract
+```
+
+**Example:**
+
+```
+2
+```
+
+#### column
+
+**Description:**
+
+```
+The column index (1-based) of the value to extract
+```
+
+**Example:**
+
+```
+3
 ```
 
 </details>
@@ -2298,6 +2531,326 @@ Value to return if delimiter not found. Use NA() for
 
 ```
 NA()
+```
+
+</details>
+
+<details>
+<summary><strong>TEXTBEFORE</strong></summary>
+
+### TEXTBEFORE
+
+**Description**
+
+```
+v1.0.0 Returns text that appears before a specified delimiter. Supports forward/backward search, case-sensitive/insensitive matching, and customizable error handling. Replicates Excel's TEXTBEFORE function for Google Sheets.
+```
+
+**Parameters**
+
+```
+1. text
+2. delimiter
+3. instance_num
+4. match_mode
+5. match_end
+6. if_not_found
+```
+
+**Formula**
+
+```
+LET(
+  
+  IF(instance_num = 0, NA(),
+    
+    IF(delimiter = "",
+      IF(instance_num > 0, "", text),
+      LET(
+        
+        search_text, IF(match_mode = 1, UPPER(text), text),
+        search_delim, IF(match_mode = 1, UPPER(delimiter), delimiter),
+
+        
+        total_count, (LEN(search_text) - LEN(SUBSTITUTE(search_text, search_delim, ""))) / LEN(search_delim),
+
+        
+        positive_inst, IF(instance_num < 0, total_count + instance_num + 1, instance_num),
+
+        
+        found, positive_inst > 0 AND positive_inst <= total_count,
+
+        IF(found,
+          LET(
+            
+            
+            marker, "§§§TEXTBEFORE§§§",
+            text_with_marker, SUBSTITUTE(search_text, search_delim, marker, positive_inst),
+            delim_pos, FIND(marker, text_with_marker),
+
+            
+            MID(text, 1, delim_pos - 1)
+          ),
+          
+          IF(match_end = 1,
+            
+            IF(instance_num > 0, text, ""),
+            
+            if_not_found
+          )
+        )
+      )
+    )
+  )
+)
+```
+
+#### text
+
+**Description:**
+
+```
+The source text to search within
+```
+
+**Example:**
+
+```
+"john.doe@example.com"
+```
+
+#### delimiter
+
+**Description:**
+
+```
+The text marking where extraction ends (extracts text before this)
+```
+
+**Example:**
+
+```
+"@"
+```
+
+#### instance_num
+
+**Description:**
+
+```
+Which occurrence to use. Positive counts from left (1=first), negative from right (-1=last). Cannot be 0.
+```
+
+**Example:**
+
+```
+1
+```
+
+#### match_mode
+
+**Description:**
+
+```
+Case sensitivity. 0 for case-sensitive (default), 1 for case-insensitive
+```
+
+#### match_end
+
+**Description:**
+
+```
+End-of-text handling. 0 requires exact match (default), 1 treats end of text as delimiter
+```
+
+#### if_not_found
+
+**Description:**
+
+```
+Value to return if delimiter not found. Use NA() for
+```
+
+**Example:**
+
+```
+NA()
+```
+
+</details>
+
+<details>
+<summary><strong>TEXTSPLIT</strong></summary>
+
+### TEXTSPLIT
+
+**Description**
+
+```
+v1.0.0 Splits text into an array using a delimiter (1D version - columns only). This is a simplified version of Excel's TEXTSPLIT function that splits text into a single row with multiple columns. Wraps Google Sheets' SPLIT function with consistent naming. Future versions may support 2D splitting with row delimiters.
+```
+
+**Parameters**
+
+```
+1. text
+2. col_delimiter
+```
+
+**Formula**
+
+```
+LET(
+  result, SPLIT(text, col_delimiter),
+  result
+)
+```
+
+#### text
+
+**Description:**
+
+```
+The text to split
+```
+
+**Example:**
+
+```
+"apple,banana,cherry"
+```
+
+#### col_delimiter
+
+**Description:**
+
+```
+The delimiter to use for splitting text into columns
+```
+
+**Example:**
+
+```
+","
+```
+
+</details>
+
+<details>
+<summary><strong>TRIMRANGE</strong></summary>
+
+### TRIMRANGE
+
+**Description**
+
+```
+v1.0.0 Removes empty rows and columns from the outer edges of a range, similar to how TRIM removes leading and trailing spaces from text. Only affects the boundaries (top, bottom, left, right) - preserves empty rows/columns in the middle of data. A row/column is considered empty if all cells are blank or empty strings. Returns BLANK() if the entire range is empty after trimming.
+```
+
+**Parameters**
+
+```
+1. range
+2. trim_rows
+3. trim_cols
+```
+
+**Formula**
+
+```
+=LET(
+  
+  rows_result, IF(trim_rows,
+    LET(
+      
+      row_nonempty, BYROW(range, LAMBDA(r, COUNTA(r) > 0)),
+
+      
+      first_row, XMATCH(TRUE, row_nonempty),
+
+      
+      last_row, XMATCH(TRUE, row_nonempty, 0, -1),
+
+      
+      IF(ISERROR(first_row),
+        (IF(,,)),
+        
+        CHOOSEROWS(range, SEQUENCE(last_row - first_row + 1, 1, first_row))
+      )
+    ),
+    range
+  ),
+
+  
+  IF(ISBLANK(rows_result),
+    (IF(,,)),
+
+    
+    IF(trim_cols,
+      LET(
+        
+        transposed, TRANSPOSE(rows_result),
+
+        
+        col_nonempty, BYROW(transposed, LAMBDA(c, COUNTA(c) > 0)),
+
+        
+        first_col, XMATCH(TRUE, col_nonempty),
+        last_col, XMATCH(TRUE, col_nonempty, 0, -1),
+
+        
+        IF(ISERROR(first_col),
+          (IF(,,)),
+          
+          TRANSPOSE(CHOOSEROWS(transposed, SEQUENCE(last_col - first_col + 1, 1, first_col)))
+        )
+      ),
+      rows_result
+    )
+  )
+)
+```
+
+#### range
+
+**Description:**
+
+```
+The data range to trim from edges
+```
+
+**Example:**
+
+```
+A1:E10
+```
+
+#### trim_rows
+
+**Description:**
+
+```
+Whether to remove empty rows from top and bottom edges. Use TRUE to trim rows, FALSE to keep all rows.
+```
+
+**Example:**
+
+```
+TRUE
+```
+
+#### trim_cols
+
+**Description:**
+
+```
+Whether to remove empty columns from left and right edges. Use TRUE to trim columns, FALSE to keep all columns.
+```
+
+**Example:**
+
+```
+TRUE
 ```
 
 </details>

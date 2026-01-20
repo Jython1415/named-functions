@@ -1,0 +1,22 @@
+name: PERCENTOF
+version: 1.0.0
+
+description: >
+  Calculates the percentage contribution of a subset relative to a total.
+  Returns a decimal value where 0.25 represents 25%. Fails with #DIV/0! if the total sum is zero.
+
+parameters:
+  - name: data_subset
+    description: Range or value representing the part of the total to calculate percentage for
+    example: "A1:A10"
+
+  - name: data_all
+    description: Range or value representing the complete total
+    example: "A1:A100"
+
+formula: |
+  LET(
+    subset_sum, SUM(data_subset),
+    total_sum, SUM(data_all),
+    subset_sum / total_sum
+  )

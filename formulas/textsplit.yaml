@@ -1,0 +1,23 @@
+name: TEXTSPLIT
+version: 1.0.0
+
+description: >
+  Splits text into an array using a delimiter (1D version - columns only).
+  This is a simplified version of Excel's TEXTSPLIT function that splits text
+  into a single row with multiple columns. Wraps Google Sheets' SPLIT function
+  with consistent naming. Future versions may support 2D splitting with row delimiters.
+
+parameters:
+  - name: text
+    description: The text to split
+    example: '"apple,banana,cherry"'
+
+  - name: col_delimiter
+    description: The delimiter to use for splitting text into columns
+    example: '","'
+
+formula: |
+  LET(
+    result, SPLIT(text, col_delimiter),
+    result
+  )
