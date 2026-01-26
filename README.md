@@ -30,6 +30,7 @@ A collection of named Excel/Google Sheets formulas using LET and LAMBDA function
 - **[HSTACKBLANK](#hstackblank)** - Stacks two arrays horizontally, padding shorter arrays with blank cells to match dimensions. Convenience wrapper for HSTACKFILL using BLANK().
 - **[HSTACKFILL](#hstackfill)** - Stacks two arrays horizontally, padding shorter arrays with a specified fill value to match dimensions. Prevents #N/A errors from mismatched heights.
 - **[ISBLANKLIKE](#isblanklike)** - Checks if a cell is either truly blank (ISBLANK) or an empty string (""). This is useful for identifying cells that appear empty but may contain empty strings from formulas or data imports. Returns TRUE if the cell is blank-like, FALSE otherwise.
+- **[ISOMITTED](#isomitted)** - Checks if a LAMBDA parameter was omitted using the double-comma syntax (e.g., FUNC(a, , c)). This is a semantic helper for optional parameters in Google Sheets custom functions. Since Google Sheets passes omitted arguments as blank values, this function uses ISBLANK internally. Note: Unlike Excel's ISOMITTED, this cannot distinguish between an omitted argument and an explicitly passed blank cell reference - both will return TRUE.
 - **[NONERRORSTO](#nonerrorsto)** - Replaces non-error cells with a specified value while preserving error cells. Accepts either a single value or a range. When given a range, automatically applies the replacement to all cells using MAP. Useful for masking valid data while keeping errors visible for debugging or validation purposes.
 - **[OMITCOLS](#omitcols)** - Excludes specified columns from a range. This is the negation of CHOOSECOLS - instead of selecting columns to keep, it selects columns to remove.
 - **[OMITROWS](#omitrows)** - Excludes specified rows from a range. This is the negation of CHOOSEROWS - instead of selecting rows to keep, it selects rows to remove.
@@ -1594,6 +1595,45 @@ OR(ISBLANK(cell), cell = "")
 
 ```
 The cell to check for blank-like condition
+```
+
+**Example:**
+
+```
+A1
+```
+
+</details>
+
+<details>
+<summary><strong>ISOMITTED</strong></summary>
+
+### ISOMITTED
+
+**Description**
+
+```
+v1.0.0 Checks if a LAMBDA parameter was omitted using the double-comma syntax (e.g., FUNC(a, , c)). This is a semantic helper for optional parameters in Google Sheets custom functions. Since Google Sheets passes omitted arguments as blank values, this function uses ISBLANK internally. Note: Unlike Excel's ISOMITTED, this cannot distinguish between an omitted argument and an explicitly passed blank cell reference - both will return TRUE.
+```
+
+**Parameters**
+
+```
+1. value
+```
+
+**Formula**
+
+```
+ISBLANK(value)
+```
+
+#### value
+
+**Description:**
+
+```
+The parameter to check for omission
 ```
 
 **Example:**

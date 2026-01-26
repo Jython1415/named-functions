@@ -1,0 +1,18 @@
+name: ISOMITTED
+version: 1.0.0
+
+description: >
+  Checks if a LAMBDA parameter was omitted using the double-comma syntax
+  (e.g., FUNC(a, , c)). This is a semantic helper for optional parameters in
+  Google Sheets custom functions. Since Google Sheets passes omitted arguments
+  as blank values, this function uses ISBLANK internally. Note: Unlike Excel's
+  ISOMITTED, this cannot distinguish between an omitted argument and an
+  explicitly passed blank cell reference - both will return TRUE.
+
+parameters:
+  - name: value
+    description: The parameter to check for omission
+    example: "A1"
+
+formula: |
+  ISBLANK(value)
