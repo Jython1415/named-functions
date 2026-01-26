@@ -31,7 +31,7 @@ Does NOT trigger when:
 - Command doesn't contain `gh` invocations
 
 Command detection:
-Uses regex pattern `(?:^|[;&|]\s*)gh\s+` to match:
+Uses regex pattern `(?:^|[;&|]\\s*)gh\\s+` to match:
 - Simple: `gh issue list`
 - Piped: `git status | gh issue view 10`
 - Chained: `git status && gh pr create`
@@ -86,13 +86,15 @@ Limitations:
 - Command detection is regex-based; unusual command structures may not be detected
 - Only monitors Bash tool (not other command execution methods)
 """
+
 import json
-import sys
-import shutil
 import os
 import re
+import shutil
+import sys
 import time
 from pathlib import Path
+
 
 # Cooldown period in seconds (5 minutes)
 COOLDOWN_PERIOD = 300
@@ -243,7 +245,7 @@ Use the GitHub REST API with curl instead.
 - Use `$(printenv GITHUB_TOKEN)` instead of `$GITHUB_TOKEN` when using pipes
 - GitHub API docs: https://docs.github.com/en/rest
 
-**This message will only appear once per 5 minutes.**"""
+**This message will only appear once per 5 minutes.**""",
             }
         }
 
